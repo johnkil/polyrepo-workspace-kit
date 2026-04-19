@@ -1,0 +1,64 @@
+version: 1
+scenario:
+  id: schema-rollout
+  change: CHG-2026-04-19-001
+  context: schema-rollout
+  generated_at: "2026-04-19T12:10:00Z"
+  generated_by:
+    tool: wkit
+    version: 0.x
+  semantics: reviewable-local-validation-snapshot
+  notes:
+    - v0.x scenarios pin revisions and local checks but do not guarantee full environment replay.
+tool_versions:
+  wkit: 0.x
+  git: git version 2.45.0
+  extra: {}
+repos:
+  - repo: shared-schema
+    revision:
+      commit: 1111111111111111111111111111111111111111
+      short: "11111111"
+      branch: main
+    worktree:
+      clean: true
+      dirty_files: 0
+      untracked_files: 0
+      dirty_paths: []
+      untracked_paths: []
+    dependency_hints:
+      lockfiles: []
+  - repo: app-web
+    revision:
+      commit: 2222222222222222222222222222222222222222
+      short: "22222222"
+      branch: main
+    worktree:
+      clean: true
+      dirty_files: 0
+      untracked_files: 0
+      dirty_paths: []
+      untracked_paths: []
+    dependency_hints:
+      lockfiles: []
+checks:
+  - id: shared-schema:test
+    repo: shared-schema
+    cwd: .
+    run: bin/test
+    timeout_seconds: 30
+    env_profile: default
+    env_requirements: []
+    expected_artifacts: []
+    requires_clean_worktree: false
+    status: planned
+  - id: app-web:test
+    repo: app-web
+    cwd: .
+    run: bin/test
+    timeout_seconds: 30
+    env_profile: default
+    env_requirements: []
+    expected_artifacts: []
+    requires_clean_worktree: false
+    status: planned

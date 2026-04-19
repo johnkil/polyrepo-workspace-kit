@@ -1,0 +1,17 @@
+version: 1
+
+workspace:
+  id: minimal-workspace
+  model: thin-coordination-layer
+
+repos:
+  - app-web
+  - shared-schema
+
+relations:
+  - from: app-web
+    to: shared-schema
+    kind: contract
+
+rules:
+  - contract-rollout-order

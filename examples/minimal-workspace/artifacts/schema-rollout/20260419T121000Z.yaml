@@ -1,0 +1,20 @@
+version: 1
+report:
+  scenario: schema-rollout
+  generated_at: "2026-04-19T12:10:00Z"
+  report_kind: local-validation-run
+results:
+  - check: shared-schema:test
+    status: passed
+    duration_seconds: 0.02
+    env_profile: default
+    stdout_path: logs/20260419T121000Z/shared-schema-test.stdout.txt
+    stderr_path: logs/20260419T121000Z/shared-schema-test.stderr.txt
+    artifacts: []
+  - check: app-web:test
+    status: passed
+    duration_seconds: 0.02
+    env_profile: default
+    stdout_path: logs/20260419T121000Z/app-web-test.stdout.txt
+    stderr_path: logs/20260419T121000Z/app-web-test.stderr.txt
+    artifacts: []

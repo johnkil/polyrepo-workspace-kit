@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+set -eu
+echo "app-web ok"

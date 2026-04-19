@@ -1,0 +1,7 @@
+version: 1
+
+contexts:
+  schema-rollout:
+    repos:
+      - shared-schema
+      - app-web

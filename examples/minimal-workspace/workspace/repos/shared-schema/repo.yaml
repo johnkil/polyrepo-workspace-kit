@@ -1,0 +1,15 @@
+version: 1
+
+repo:
+  id: shared-schema
+  kind: contract
+
+read_first:
+  - README.md
+
+entrypoints:
+  test:
+    run: bin/test
+    cwd: .
+    timeout_seconds: 30
+    env_profile: default

@@ -1,0 +1,11 @@
+Scenario: schema-rollout
+Results: passed=2 failed=0 blocked=0 skipped=0
+
+- passed: shared-schema:test
+  stdout: logs/20260419T121000Z/shared-schema-test.stdout.txt
+  stderr: logs/20260419T121000Z/shared-schema-test.stderr.txt
+  env_profile: default
+- passed: app-web:test
+  stdout: logs/20260419T121000Z/app-web-test.stdout.txt
+  stderr: logs/20260419T121000Z/app-web-test.stderr.txt
+  env_profile: default

@@ -1,0 +1,144 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  go-test:
+    name: Go hygiene and tests (${{ matrix.os }}, Go ${{ matrix.go-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+        go-version:
+          - "1.25.x"
+          - "1.26.x"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Check module tidiness
+        run: go mod tidy -diff
+
+      - name: Install goimports
+        run: |
+          go install golang.org/x/tools/cmd/goimports@v0.29.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: |
+          unformatted="$(goimports -local github.com/johnkil/polyrepo-workspace-kit -l $(find . -type f -name '*.go' -not -path './.git/*' -not -path './vendor/*'))"
+          if [ -n "$unformatted" ]; then
+            echo "goimports needed for:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version-file: .golangci-lint-version
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build wkit
+        run: go build -o bin/wkit ./cmd/wkit
+
+      - name: Run minimal example
+        run: WKIT_BIN="$PWD/bin/wkit" sh examples/minimal-workspace/run-demo.sh
+
+  race-test:
+    name: Go race detector
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Run race tests
+        run: go test -race ./...
+
+  windows-test:
+    name: Windows Go test and build
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build wkit
+        run: go build -o bin/wkit.exe ./cmd/wkit
+
+  coverage:
+    name: Go coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Run coverage
+        run: make coverage
+
+  fuzz:
+    name: Go fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Run fuzz smoke
+        run: make fuzz FUZZTIME=3s
+
+  govulncheck:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: "1.26.x"
+          go-package: ./...

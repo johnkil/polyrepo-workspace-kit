@@ -1,0 +1,9 @@
+version: 1
+
+rule:
+  id: contract-rollout-order
+  kind: rollout-order
+  applies_to:
+    relation_kind: contract
+  policy:
+    order: provider-before-consumer
