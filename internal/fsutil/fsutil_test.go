@@ -38,6 +38,9 @@ func TestCopyFilePreservesContentAndMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if runtime.GOOS == "windows" {
+		return
+	}
 	if got := info.Mode().Perm(); got != 0o755 {
 		t.Fatalf("expected target mode 0755, got %o", got)
 	}

@@ -202,9 +202,18 @@ func TestScenarioRunBlocksQuotedRunCommand(t *testing.T) {
 
 func TestScenarioRunFailsOnCommandFailure(t *testing.T) {
 	root, checkout := seedPinnedScenario(t)
-	if err := os.WriteFile(filepath.Join(checkout, "bin", "test"), []byte("#!/usr/bin/env sh\necho nope >&2\nexit 7\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeTestCommand(t, checkout, `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	fmt.Fprintln(os.Stderr, "nope")
+	os.Exit(7)
+}
+`)
 	result, err := scenario.Run(root, "app-flow", time.Date(2026, 4, 19, 12, 10, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
@@ -234,9 +243,14 @@ func TestScenarioRunFailsOnCommandFailure(t *testing.T) {
 
 func TestScenarioRunFailsOnTimeout(t *testing.T) {
 	root, checkout := seedPinnedScenario(t)
-	if err := os.WriteFile(filepath.Join(checkout, "bin", "test"), []byte("#!/usr/bin/env sh\nsleep 2\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeTestCommand(t, checkout, `package main
+
+import "time"
+
+func main() {
+	time.Sleep(2 * time.Second)
+}
+`)
 	lock, err := scenario.Load(root, "app-flow")
 	if err != nil {
 		t.Fatal(err)
@@ -345,6 +359,16 @@ func seedScenarioWorkspace(t *testing.T) (string, string, string) {
 	if _, err := workspace.RegisterRepo(root, "app-web", "app"); err != nil {
 		t.Fatal(err)
 	}
+	repo, err := workspace.LoadRepo(root, "app-web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entrypoint := repo.Entrypoints["test"]
+	entrypoint.Run = "go run ./testcmd.go"
+	repo.Entrypoints["test"] = entrypoint
+	if err := manifest.WriteYAML(filepath.Join(root, "repos", "app-web", "repo.yaml"), repo); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := workspace.SetBinding(root, "app-web", checkout); err != nil {
 		t.Fatal(err)
 	}
@@ -371,9 +395,14 @@ func initGitRepo(t *testing.T, root string) {
 	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("# app-web\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "bin", "test"), []byte("#!/usr/bin/env sh\necho ok\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeTestCommand(t, root, `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("ok")
+}
+`)
 	run(t, root, "git", "init")
 	run(t, root, "git", "config", "user.email", "test@example.com")
 	run(t, root, "git", "config", "user.name", "Test User")
@@ -388,5 +417,12 @@ func run(t *testing.T, dir string, name string, args ...string) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
+	}
+}
+
+func writeTestCommand(t *testing.T, root string, source string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(root, "testcmd.go"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
