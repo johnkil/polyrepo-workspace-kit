@@ -1,5 +1,10 @@
 # Polyrepo Workspace Kit
 
+[![Test](https://github.com/johnkil/polyrepo-workspace-kit/actions/workflows/test.yml/badge.svg)](https://github.com/johnkil/polyrepo-workspace-kit/actions/workflows/test.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/johnkil/polyrepo-workspace-kit.svg)](https://pkg.go.dev/github.com/johnkil/polyrepo-workspace-kit)
+[![Release](https://img.shields.io/github/v/release/johnkil/polyrepo-workspace-kit?display_name=tag&sort=semver)](https://github.com/johnkil/polyrepo-workspace-kit/releases)
+[![License](https://img.shields.io/github/license/johnkil/polyrepo-workspace-kit)](LICENSE)
+
 **A local CLI for polyrepo and multi-repository workspace coordination, cross-repo validation, and generated AI coding-agent guidance.**
 
 ![Polyrepo Workspace Kit schematic promo](docs/assets/promo-clean-architecture.png)
@@ -23,6 +28,12 @@ Use it when you need to:
 
 ## Quick Start
 
+Install the latest source-first release:
+
+```bash
+go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
+```
+
 From a local checkout:
 
 ```bash
@@ -41,12 +52,6 @@ Build a local `wkit` binary:
 
 ```bash
 make build
-```
-
-Early adopters can also install from source when the Git remote is available:
-
-```bash
-go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
 ```
 
 ## Product Thesis
