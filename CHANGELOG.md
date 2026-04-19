@@ -8,7 +8,7 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ### Changed
 
-- Updated GitHub Actions workflow dependencies to Node.js 24-compatible `actions/checkout@v6` and `actions/setup-go@v6`, and replaced the `govulncheck` composite action with a direct Go command to avoid stale action runtimes.
+- Updated GitHub Actions workflow dependencies to Node.js 24-compatible `actions/checkout@v6` and `actions/setup-go@v6`, and replaced `golangci-lint` and `govulncheck` workflow actions with direct Go commands to avoid stale action runtimes.
 
 ## v0.1.0 - 2026-04-19
 
