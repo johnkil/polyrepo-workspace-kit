@@ -6,7 +6,9 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
-No changes yet.
+### Changed
+
+- Updated GitHub Actions workflow dependencies to Node.js 24-compatible `actions/checkout@v6` and `actions/setup-go@v6`.
 
 ## v0.1.0 - 2026-04-19
 
