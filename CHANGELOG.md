@@ -14,6 +14,7 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 - Added a lightweight GitHub Pages landing page with basic SEO metadata, robots.txt, and sitemap.xml.
 - Added a dedicated GitHub Pages workflow for publishing the static docs landing page.
 - Switched the GitHub Pages landing page and social preview asset to a dark-first visual design with a CLI/workspace preview.
+- Added a dedicated README hero image using the dark CLI/workspace visual system.
 
 ### Changed
 

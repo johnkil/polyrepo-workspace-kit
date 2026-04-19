@@ -7,7 +7,7 @@
 
 **A local CLI for polyrepo and multi-repository workspace coordination, cross-repo validation, and generated AI coding-agent guidance.**
 
-![Polyrepo Workspace Kit schematic promo](docs/assets/promo-clean-architecture.png)
+![Polyrepo Workspace Kit CLI and workspace preview](docs/assets/readme-hero.jpg)
 
 - Repository name: `polyrepo-workspace-kit`
 - Go module: `github.com/johnkil/polyrepo-workspace-kit`
