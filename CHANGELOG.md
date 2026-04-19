@@ -6,6 +6,10 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
+### Added
+
+- Added GitHub issue forms and a pull request template for clearer community input.
+
 ### Changed
 
 - Updated GitHub Actions workflow dependencies to Node.js 24-compatible `actions/checkout@v6` and `actions/setup-go@v6`, and replaced `golangci-lint` and `govulncheck` workflow actions with direct Go commands to avoid stale action runtimes.

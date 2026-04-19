@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a focused improvement to the local polyrepo coordination workflow.
+title: "Feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Polyrepo Workspace Kit intentionally stays narrow. Please describe the workflow pain first, then the smallest useful change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What repeated workflow pain or missing capability does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should change in the CLI, manifests, docs, examples, or adapter outputs?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core workspace model
+        - Change workflow
+        - Scenario workflow
+        - Install/adapters
+        - Validation
+        - Examples
+        - Documentation
+        - Release/packaging
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: How are you solving this today?
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This keeps adapter outputs derived from canonical workspace state.
+        - label: This does not require a hosted runtime.
+        - label: This does not make graph auto-discovery canonical truth.
