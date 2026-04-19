@@ -86,6 +86,9 @@ The first GitHub Pages landing page lives at:
 docs/index.html
 ```
 
+It is published by `.github/workflows/pages.yml`, which uploads the `docs/`
+directory as a static Pages artifact.
+
 It is intentionally small:
 
 - one-page overview;

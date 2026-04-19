@@ -12,6 +12,7 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 - Added README status badges and promoted the source-first install command in Quick Start.
 - Added a GitHub social preview asset and repository discoverability checklist.
 - Added a lightweight GitHub Pages landing page with basic SEO metadata, robots.txt, and sitemap.xml.
+- Added a dedicated GitHub Pages workflow for publishing the static docs landing page.
 
 ### Changed
 
