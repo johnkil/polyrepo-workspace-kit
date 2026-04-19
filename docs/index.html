@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Polyrepo Workspace Kit</title>
+    <meta
+      name="description"
+      content="A local CLI for polyrepo workspace coordination, cross-repo validation, and generated coding-agent guidance."
+    >
+    <link rel="canonical" href="https://johnkil.github.io/polyrepo-workspace-kit/">
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230f766e'/%3E%3Cpath d='M18 21h28v7H18zm0 15h28v7H18z' fill='white'/%3E%3C/svg%3E"
+    >
+    <meta property="og:title" content="Polyrepo Workspace Kit">
+    <meta
+      property="og:description"
+      content="Coordinate local multi-repo workspaces, scenario validation, and portable coding-agent guidance from canonical manifests."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://johnkil.github.io/polyrepo-workspace-kit/">
+    <meta property="og:image" content="assets/social-preview.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Polyrepo Workspace Kit">
+    <meta
+      name="twitter:description"
+      content="A thin local coordination layer for polyrepo workspaces and coding-agent guidance."
+    >
+    <meta name="twitter:image" content="assets/social-preview.jpg">
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1b2630;
+        --muted: #5f6f7b;
+        --line: #d7dee5;
+        --surface: #ffffff;
+        --soft: #f3f6f8;
+        --teal: #0f766e;
+        --blue: #2563eb;
+        --amber: #b45309;
+        --code: #0f172a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--surface);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration-thickness: 0.08em;
+        text-underline-offset: 0.2em;
+      }
+
+      a:hover {
+        color: var(--teal);
+      }
+
+      code {
+        border: 1px solid #c8d3df;
+        border-radius: 6px;
+        background: #f7f9fb;
+        color: var(--code);
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+        padding: 0.08rem 0.28rem;
+      }
+
+      .wrap {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.94);
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        backdrop-filter: blur(14px);
+      }
+
+      .nav {
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        color: var(--ink);
+        font-weight: 760;
+        text-decoration: none;
+      }
+
+      .navlinks {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .navlinks a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .navlinks a:hover {
+        color: var(--ink);
+      }
+
+      .hero {
+        padding: 72px 0 46px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+        align-items: center;
+        gap: 42px;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--teal);
+        font-size: 0.78rem;
+        font-weight: 780;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin-bottom: 18px;
+        color: #111827;
+        font-size: clamp(2.35rem, 6vw, 4.75rem);
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 700px;
+        margin-bottom: 28px;
+        color: #3b4a55;
+        font-size: 1.12rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .button {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0.64rem 0.95rem;
+        font-weight: 680;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        border-color: #0f766e;
+        background: #0f766e;
+        color: #ffffff;
+      }
+
+      .button.secondary {
+        background: #ffffff;
+        color: var(--ink);
+      }
+
+      .install {
+        width: min(100%, 720px);
+        border: 1px solid #c5ced8;
+        border-radius: 8px;
+        background: #0f172a;
+        color: #e6edf3;
+      }
+
+      .install pre {
+        margin: 0;
+        padding: 16px 18px;
+      }
+
+      .install code {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .hero-media {
+        margin: 0;
+      }
+
+      .hero-media img {
+        width: 100%;
+        display: block;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .band {
+        border-top: 1px solid var(--line);
+        padding: 52px 0;
+      }
+
+      .band.soft {
+        background: var(--soft);
+      }
+
+      .section-head {
+        max-width: 780px;
+        margin-bottom: 26px;
+      }
+
+      h2 {
+        margin-bottom: 12px;
+        font-size: clamp(1.72rem, 4vw, 2.65rem);
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .section-head p {
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .tile {
+        min-height: 176px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 20px;
+      }
+
+      .tile h3 {
+        margin-bottom: 10px;
+        font-size: 1.06rem;
+      }
+
+      .tile p,
+      .tile li {
+        color: var(--muted);
+      }
+
+      .tile ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .step {
+        min-height: 132px;
+        border-left: 4px solid var(--teal);
+        background: #ffffff;
+        padding: 17px 18px;
+      }
+
+      .step:nth-child(2) {
+        border-left-color: var(--blue);
+      }
+
+      .step:nth-child(3) {
+        border-left-color: var(--amber);
+      }
+
+      .step h3 {
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+
+      .docs-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .doc-link {
+        min-height: 86px;
+        display: block;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--ink);
+        padding: 16px;
+        text-decoration: none;
+      }
+
+      .doc-link span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        padding: 28px 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      @media (max-width: 860px) {
+        .wrap {
+          width: min(100% - 28px, 720px);
+        }
+
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 0;
+        }
+
+        .navlinks {
+          width: 100%;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .hero {
+          padding-top: 44px;
+        }
+
+        .hero-grid,
+        .grid,
+        .flow,
+        .docs-list {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          gap: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <nav class="wrap nav" aria-label="Primary navigation">
+        <a class="brand" href="https://github.com/johnkil/polyrepo-workspace-kit">
+          Polyrepo Workspace Kit
+        </a>
+        <div class="navlinks">
+          <a href="#why">Why</a>
+          <a href="#model">Model</a>
+          <a href="#docs">Docs</a>
+          <a href="https://github.com/johnkil/polyrepo-workspace-kit">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div>
+            <p class="eyebrow">Source-first Go CLI for local workspaces</p>
+            <h1>Polyrepo Workspace Kit</h1>
+            <p class="lead">
+              A thin coordination layer for local polyrepo workspaces,
+              cross-repo validation, and generated coding-agent guidance.
+            </p>
+            <div class="actions" aria-label="Primary actions">
+              <a class="button primary" href="https://github.com/johnkil/polyrepo-workspace-kit">
+                View on GitHub
+              </a>
+              <a
+                class="button secondary"
+                href="https://github.com/johnkil/polyrepo-workspace-kit/blob/main/docs/install.md"
+              >
+                Install docs
+              </a>
+              <a
+                class="button secondary"
+                href="https://github.com/johnkil/polyrepo-workspace-kit/blob/main/docs/spec.md"
+              >
+                Technical spec
+              </a>
+            </div>
+            <div class="install" aria-label="Install command">
+              <pre><code>go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest</code></pre>
+            </div>
+          </div>
+          <figure class="hero-media">
+            <img
+              src="assets/social-preview.jpg"
+              alt="Polyrepo Workspace Kit schematic showing workspace coordination, scenario evidence, and derived agent guidance."
+              width="1280"
+              height="640"
+            >
+          </figure>
+        </div>
+      </section>
+
+      <section id="why" class="band soft">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Built for multi-repo work that still needs local truth.</h2>
+            <p>
+              The project helps humans and coding agents share one explicit
+              workspace model without pretending every repository belongs in a
+              monorepo or in a hosted portal.
+            </p>
+          </div>
+          <div class="grid">
+            <article class="tile">
+              <h3>Coordinate repositories</h3>
+              <p>
+                Register repos, relationships, contexts, and active changes in
+                workspace manifests that are readable and reviewable.
+              </p>
+            </article>
+            <article class="tile">
+              <h3>Pin validation scenarios</h3>
+              <p>
+                Capture repo-local checks as scenario snapshots and write local
+                evidence reports for handoff and review.
+              </p>
+            </article>
+            <article class="tile">
+              <h3>Generate agent guidance</h3>
+              <p>
+                Install derived repo-scope guidance for portable agents, Codex,
+                OpenCode, Copilot, and Claude from canonical workspace sources.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="model" class="band">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>A small model on purpose.</h2>
+            <p>
+              Canonical truth lives in manifests and guidance sources. Adapter
+              files are generated outputs, not a second source of truth.
+            </p>
+          </div>
+          <div class="flow">
+            <article class="step">
+              <h3>Workspace</h3>
+              <p>Repos, contexts, relationships, rules, and live changes.</p>
+            </article>
+            <article class="step">
+              <h3>Scenario</h3>
+              <p>Reviewable local validation snapshots with explicit repo pins.</p>
+            </article>
+            <article class="step">
+              <h3>Binding</h3>
+              <p>Machine-local checkout paths kept out of shared canonical state.</p>
+            </article>
+            <article class="step">
+              <h3>Adapter</h3>
+              <p>Derived guidance files installed into real tool discovery paths.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="docs" class="band soft">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Read the source documents.</h2>
+            <p>
+              The landing page is only a doorway. The repository remains the
+              product source of truth.
+            </p>
+          </div>
+          <div class="docs-list">
+            <a
+              class="doc-link"
+              href="https://github.com/johnkil/polyrepo-workspace-kit/blob/main/docs/spec.md"
+            >
+              Technical specification
+              <span>Canonical model, file formats, CLI contracts, and safety rules.</span>
+            </a>
+            <a
+              class="doc-link"
+              href="https://github.com/johnkil/polyrepo-workspace-kit/blob/main/docs/install.md"
+            >
+              Install and development
+              <span>Source-first install, local build, and development commands.</span>
+            </a>
+            <a
+              class="doc-link"
+              href="https://github.com/johnkil/polyrepo-workspace-kit/blob/main/docs/implementation-plan.md"
+            >
+              Implementation plan
+              <span>Shipped milestones, current posture, and deferred scope.</span>
+            </a>
+            <a
+              class="doc-link"
+              href="https://github.com/johnkil/polyrepo-workspace-kit/blob/main/docs/release.md"
+            >
+              Release policy
+              <span>Versioning, release process, and source-first distribution posture.</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap">
+        Apache-2.0 licensed. Source and issues live on
+        <a href="https://github.com/johnkil/polyrepo-workspace-kit">GitHub</a>.
+      </div>
+    </footer>
+  </body>
+</html>

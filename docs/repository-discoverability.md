@@ -30,9 +30,13 @@ Topics:
 - `repository-management`
 - `workspace-management`
 
-Homepage is intentionally blank until the project has a real GitHub Pages or
-external documentation landing page. Do not point homepage back to the same
-repository URL.
+Homepage should point to the GitHub Pages landing page once Pages is enabled:
+
+```text
+https://johnkil.github.io/polyrepo-workspace-kit/
+```
+
+Do not point homepage back to the same repository URL.
 
 ## Social Preview
 
@@ -74,13 +78,25 @@ The repository includes:
 GitHub community profile health was verified at `100%` after adding issue and
 pull request templates.
 
-## Future GitHub Pages
+## GitHub Pages
 
-Only add GitHub Pages when the project needs an indexed documentation landing
-page outside the repository README. A useful first version would be:
+The first GitHub Pages landing page lives at:
+
+```text
+docs/index.html
+```
+
+It is intentionally small:
 
 - one-page overview;
-- install command;
-- minimal demo;
-- links to `docs/spec.md`, `docs/install.md`, and `docs/release.md`;
+- source-first install command;
+- links to source documents on GitHub:
+  `docs/spec.md`, `docs/install.md`, `docs/implementation-plan.md`, and `docs/release.md`;
 - no new product claims beyond the shipped CLI and documented roadmap.
+
+The page also includes:
+
+- canonical URL metadata for `https://johnkil.github.io/polyrepo-workspace-kit/`;
+- Open Graph and Twitter Card metadata using `docs/assets/social-preview.jpg`;
+- `docs/robots.txt`;
+- `docs/sitemap.xml`.
