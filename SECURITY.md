@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Polyrepo Workspace Kit is currently unreleased v0.x software. Security fixes target the current `main` development line until public release versioning is established.
+Polyrepo Workspace Kit is early v0.x software. Security fixes target the current `main` development line and the latest public v0.x release.
 
 ## Reporting a Vulnerability
 

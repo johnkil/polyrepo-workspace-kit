@@ -1,7 +1,8 @@
 # Release Notes
-## Unreleased v0.x
 
-These notes describe the current unreleased implementation state.
+## v0.1.0 - 2026-04-19
+
+These notes describe the first source-first public release.
 
 ## Highlights
 
@@ -26,7 +27,7 @@ sh examples/minimal-workspace/run-demo.sh
 
 Adapter target paths are still docs-backed unless a compatibility probe records tool version, probe date, target path, and observed behavior.
 
-Tool-specific user-scope installs are not implemented in this release state.
+Tool-specific user-scope installs are not implemented in this release.
 
 ## Distribution Notes
 

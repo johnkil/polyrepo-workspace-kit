@@ -6,6 +6,10 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
+No changes yet.
+
+## v0.1.0 - 2026-04-19
+
 ### Added
 
 - Go CLI entrypoint: `cmd/wkit`.
@@ -31,7 +35,7 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 - GitHub Issues support channel and GitHub private vulnerability reporting guidance.
 - Release and versioning policy for source-first v0.x releases.
 - Clean-repo empirical compatibility pass for Codex and Claude Code adapter behavior.
-- Private conduct reporting contact.
+- Conduct reporting policy without publishing a personal email address.
 
 ### Fixed
 
