@@ -500,21 +500,56 @@ It may additionally warn on:
 - `wkit init <path>`
 - `wkit repo register <repo-id> --kind <kind>`
 - `wkit bind set <repo-id> <path>`
+- `wkit context list`
+- `wkit context show <context-id>`
+- `wkit info`
+- `wkit overview`
+- `wkit status [--context <context-id>]`
+- `wkit doctor`
 - `wkit validate`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
 - `wkit scenario pin <scenario-id> --change <change-id>`
 - `wkit scenario show <scenario-id>`
+- `wkit scenario status <scenario-id>`
 - `wkit scenario run <scenario-id>`
 
-### 9.2 Install commands
+### 9.2 Orientation and diagnostics commands
+
+Orientation and diagnostics commands are read-only local inspection. They must not
+clone, fetch, pull, push, switch branches, commit, execute scenario checks, or
+mutate repository checkouts.
+
+- `wkit context list` prints known context ids sorted by id with repo counts.
+- `wkit context show <context-id>` prints repo ids in manifest order. Unknown
+  contexts fail with exit code `1`.
+- `wkit info` and its alias `wkit overview` print workspace id/root, repo counts
+  by kind, relation counts by kind, context summaries, change/scenario
+  counts/latest ids, binding coverage, guidance counts, and next likely local
+  commands.
+- `wkit status [--context <context-id>]` prints local checkout state for all
+  workspace repos or the repos in the named context. It reports repo id, binding
+  state, branch or detached state, short commit, dirty count, untracked count,
+  upstream, and ahead/behind counts when a local upstream ref exists. It must not
+  run `git fetch`; missing upstream is reported as `upstream=none`.
+- `wkit scenario status <scenario-id>` compares current local checkouts with the
+  pinned scenario lock without running checks. Per pinned repo, it reports pinned
+  commit, current commit, branch label, and `ok`, `drift`, `missing`, or
+  `blocked`. Drift, missing commit data, missing bindings, inaccessible paths,
+  and non-git checkouts fail with exit code `4`.
+- `wkit doctor` combines manifest validation with actionable local diagnostics
+  for missing bindings, inaccessible checkouts, non-git checkouts, invalid or
+  missing entrypoint `cwd` paths, and stale scenario locks. It exits `0` when
+  there are no errors and `2` when there are errors; warnings alone do not fail.
+
+### 9.3 Install commands
 
 - `wkit install plan <tool> [repo-id]`
 - `wkit install diff <tool> [repo-id]`
 - `wkit install show-targets <tool> [repo-id]`
 - `wkit install apply <tool> [repo-id]`
 
-### 9.3 Install flags
+### 9.4 Install flags
 
 - `--scope repo|user`
 - `--user-root <path>`
@@ -706,9 +741,9 @@ short explanatory note where practical.
 Suggested v0.x exit codes:
 
 - `0` — success
-- `2` — validation or argument error
+- `2` — validation, doctor, or argument error
 - `3` — blocked install targets
-- `4` — scenario drift or missing binding
+- `4` — scenario drift, missing binding, or blocked `scenario status` / `scenario run` prerequisite
 - `5` — command failure during scenario run
 
 If one scenario run contains both blocked/drift checks and command failures, command failure takes precedence for the process exit code.

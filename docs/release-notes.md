@@ -1,5 +1,13 @@
 # Release Notes
 
+## Unreleased
+
+- Added read-only orientation and diagnostics commands:
+  `wkit context list`, `wkit context show`, `wkit info`/`wkit overview`,
+  `wkit status`, `wkit scenario status`, and `wkit doctor`.
+- `wkit status`, `wkit scenario status`, and `wkit doctor` inspect local truth
+  without fetching remotes, mutating checkouts, or running scenario checks.
+
 ## v0.1.0 - 2026-04-19
 
 These notes describe the first source-first public release.

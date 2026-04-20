@@ -15,6 +15,10 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 - Added a dedicated GitHub Pages workflow for publishing the static docs landing page.
 - Switched the GitHub Pages landing page and social preview asset to a dark-first visual design with a CLI/workspace preview.
 - Added a dedicated README hero image using the dark CLI/workspace visual system.
+- Added a competitive research note distinguishing `wkit` from bulk polyrepo Git managers such as `polyrepopro/polyrepo`.
+- Added feature-level research on which bulk polyrepo Git manager ideas should inspire future `wkit` status, doctor, overview, and scenario drift workflows.
+- Added read-only orientation commands: `context list`, `context show`, `info`/`overview`, `status`, `scenario status`, and `doctor`.
+- Added local checkout diagnostics for git state, dirty/untracked counts, upstream/ahead/behind state, stale scenario locks, missing bindings, non-git checkouts, and invalid entrypoint `cwd` paths.
 
 ### Changed
 

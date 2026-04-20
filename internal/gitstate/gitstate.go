@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
@@ -21,6 +22,22 @@ type State struct {
 	DirtyPaths     []string
 	UntrackedPaths []string
 	Lockfiles      []model.LockfileHint
+}
+
+type CheckoutStatus struct {
+	Git            bool
+	Commit         string
+	Short          string
+	Branch         string
+	Detached       bool
+	Clean          bool
+	DirtyPaths     []string
+	UntrackedPaths []string
+	Upstream       string
+	Ahead          int
+	Behind         int
+	HasUpstream    bool
+	HasDivergence  bool
 }
 
 func Version() string {
@@ -58,6 +75,57 @@ func Capture(repoPath string) (State, error) {
 		UntrackedPaths: untracked,
 		Lockfiles:      LockfileHints(repoPath),
 	}, nil
+}
+
+func Inspect(repoPath string) (CheckoutStatus, error) {
+	inside, err := run(repoPath, "git", "rev-parse", "--is-inside-work-tree")
+	if err != nil {
+		if isNotGitError(err) {
+			return CheckoutStatus{Git: false}, nil
+		}
+		return CheckoutStatus{}, err
+	}
+	if strings.TrimSpace(inside) != "true" {
+		return CheckoutStatus{Git: false}, nil
+	}
+
+	state, err := Capture(repoPath)
+	if err != nil {
+		return CheckoutStatus{}, err
+	}
+	status := CheckoutStatus{
+		Git:            true,
+		Commit:         state.Commit,
+		Short:          state.Short,
+		Branch:         state.Branch,
+		Detached:       state.Branch == "HEAD",
+		Clean:          state.Clean,
+		DirtyPaths:     state.DirtyPaths,
+		UntrackedPaths: state.UntrackedPaths,
+	}
+
+	upstream, err := run(repoPath, "git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+	if err != nil {
+		return status, nil
+	}
+	status.Upstream = strings.TrimSpace(upstream)
+	status.HasUpstream = status.Upstream != ""
+	if !status.HasUpstream {
+		return status, nil
+	}
+
+	counts, err := run(repoPath, "git", "rev-list", "--left-right", "--count", "HEAD...@{u}")
+	if err != nil {
+		return status, nil
+	}
+	ahead, behind, ok := parseAheadBehind(counts)
+	if !ok {
+		return status, nil
+	}
+	status.Ahead = ahead
+	status.Behind = behind
+	status.HasDivergence = true
+	return status, nil
 }
 
 func Head(repoPath string) (string, error) {
@@ -126,6 +194,26 @@ func appendIfNotEmpty(items []string, value string) []string {
 		return items
 	}
 	return append(items, value)
+}
+
+func parseAheadBehind(out string) (int, int, bool) {
+	fields := strings.Fields(out)
+	if len(fields) != 2 {
+		return 0, 0, false
+	}
+	ahead, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0, 0, false
+	}
+	behind, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, 0, false
+	}
+	return ahead, behind, true
+}
+
+func isNotGitError(err error) bool {
+	return strings.Contains(err.Error(), "not a git repository")
 }
 
 func run(dir string, name string, args ...string) (string, error) {
