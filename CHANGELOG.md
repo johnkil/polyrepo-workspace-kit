@@ -6,6 +6,8 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
+## v0.2.0 - 2026-04-20
+
 ### Added
 
 - Added GitHub issue forms and a pull request template for clearer community input.
