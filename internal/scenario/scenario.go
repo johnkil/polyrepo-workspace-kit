@@ -11,14 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/johnkil/polyrepo-workspace-kit/internal/buildinfo"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/fsutil"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/gitstate"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/manifest"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/workspace"
 )
-
-const WKitVersion = "0.x"
 
 type RunResult struct {
 	ReportPath     string
@@ -76,6 +75,7 @@ func Pin(root string, scenarioID string, changeID string, now time.Time) (string
 	if len(checks) == 0 {
 		return "", fmt.Errorf("could not derive any scenario checks from repo entrypoints")
 	}
+	wkitVersion := buildinfo.Current().Version
 	doc := model.ScenarioLockDocument{
 		Version: 1,
 		Scenario: model.ScenarioMeta{
@@ -83,14 +83,14 @@ func Pin(root string, scenarioID string, changeID string, now time.Time) (string
 			Change:      changeDoc.Change.ID,
 			Context:     changeDoc.Change.Context,
 			GeneratedAt: now.UTC().Format(time.RFC3339),
-			GeneratedBy: model.GeneratedBy{Tool: "wkit", Version: WKitVersion},
+			GeneratedBy: model.GeneratedBy{Tool: "wkit", Version: wkitVersion},
 			Semantics:   "reviewable-local-validation-snapshot",
 			Notes: []string{
 				"v0.x scenarios pin revisions and local checks but do not guarantee full environment replay.",
 			},
 		},
 		ToolVersions: model.ToolVersions{
-			WKit:  WKitVersion,
+			WKit:  wkitVersion,
 			Git:   gitstate.Version(),
 			Extra: map[string]string{},
 		},

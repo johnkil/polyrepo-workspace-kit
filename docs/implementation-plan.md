@@ -28,6 +28,8 @@ Implemented commands:
 - `wkit overview`
 - `wkit status [--context <context-id>]`
 - `wkit doctor`
+- `wkit version`
+- `wkit --version`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
 - `wkit scenario pin <scenario-id> --change <change-id>`
@@ -51,6 +53,7 @@ Implemented install tools:
 Implemented packages:
 
 - `cmd/wkit`
+- `internal/buildinfo`
 - `internal/cli`
 - `internal/fsutil`
 - `internal/gitstate`
@@ -175,7 +178,7 @@ Scope:
 - changelog;
 - release notes;
 - CI for tests;
-- GoReleaser only when distribution hardens.
+- release automation posture.
 
 Acceptance:
 
@@ -186,7 +189,7 @@ Acceptance:
 
 Current packaging posture:
 
-- source-first development and local builds are documented;
+- source installs and local builds are documented;
 - Go module path is `github.com/johnkil/polyrepo-workspace-kit`;
 - the minimal example includes a committed scenario artifact snapshot;
 - GitHub Issues are documented for public support and non-sensitive conduct reports;
@@ -195,8 +198,8 @@ Current packaging posture:
 - Apache License 2.0 is recorded in `LICENSE`;
 - release and versioning policy is documented in `docs/release.md`;
 - clean-repo empirical Codex and Claude Code adapter notes are recorded in `research/empirical-agent-compatibility-matrix.md`;
-- public binary release automation is deferred;
-- GoReleaser is not configured yet because public distribution has not been justified.
+- public binary release automation is configured for tagged draft GitHub Releases;
+- GoReleaser builds Linux, macOS, and Windows archives for amd64 and arm64, plus checksums and build metadata;
 - `.github/workflows/test.yml` validates formatting, module tidiness, vet, lint, tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, build, and the minimal example without publishing artifacts.
 - `.github/dependabot.yml` keeps Go module and GitHub Actions updates visible on a weekly cadence.
 
@@ -220,6 +223,26 @@ Acceptance:
 - scenario status reports `ok`, `drift`, `missing`, and `blocked` against the pinned lock without executing entrypoints;
 - doctor combines manifest validation with local diagnostics for bindings, git checkouts, entrypoint `cwd` paths, and stale scenario locks;
 - tests cover context listing/showing, info counts, status git states, scenario status drift/blocked states, and doctor exits/diagnostics.
+
+## Milestone 7: Release Foundations
+
+Status: done
+
+Scope:
+
+- `wkit version`
+- `wkit --version`
+- GoReleaser archive and checksum configuration
+- tag-triggered GitHub release workflow
+- local release validation targets
+
+Acceptance:
+
+- release builds embed version, commit, date, dirty state, and builder metadata;
+- tagged `v*` workflow builds Linux, macOS, and Windows archives for amd64 and arm64;
+- release workflow uploads `checksums.txt` and creates artifact attestations from it;
+- GitHub Releases are draft by default for maintainer review before publishing;
+- Homebrew, signing, notarization, OS packages, Scoop, and Winget remain deferred and documented honestly.
 
 ## Deferred
 

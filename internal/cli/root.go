@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/johnkil/polyrepo-workspace-kit/internal/buildinfo"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/install"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/orient"
@@ -54,9 +55,11 @@ func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "wkit",
 		Short:         "Coordinate local polyrepo workspaces",
+		Version:       buildinfo.String(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	root.SetVersionTemplate("wkit {{ .Version }}\n")
 	root.PersistentFlags().StringVar(&workspaceFlag, "workspace", "", "workspace root")
 
 	root.AddCommand(newInitCommand())
@@ -70,6 +73,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newDoctorCommand(&workspaceFlag))
 	root.AddCommand(newInstallCommand(&workspaceFlag))
 	root.AddCommand(newValidateCommand(&workspaceFlag))
+	root.AddCommand(newVersionCommand())
 
 	return root
 }
@@ -332,6 +336,30 @@ func newValidateCommand(workspaceFlag *string) *cobra.Command {
 				return writeln(cmd, "ok: workspace is valid")
 			}
 			return writef(cmd, "ok: workspace is valid with %d warning(s)\n", len(report.Warnings))
+		},
+	}
+}
+
+func newVersionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show wkit build version",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			info := buildinfo.Current()
+			if err := writef(cmd, "wkit %s\n", info.Version); err != nil {
+				return err
+			}
+			if err := writef(cmd, "commit: %s\n", info.Commit); err != nil {
+				return err
+			}
+			if err := writef(cmd, "date: %s\n", info.Date); err != nil {
+				return err
+			}
+			if err := writef(cmd, "dirty: %s\n", info.Dirty); err != nil {
+				return err
+			}
+			return writef(cmd, "builtBy: %s\n", info.BuiltBy)
 		},
 	}
 }

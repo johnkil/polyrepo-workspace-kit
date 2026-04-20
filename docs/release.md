@@ -1,6 +1,6 @@
 # Release and Versioning
 
-Status: v0.x source-first policy
+Status: v0.x source install plus tagged release archive policy
 
 ## Versioning
 
@@ -21,15 +21,20 @@ Before `v1.0.0`, compatibility promises are intentionally narrow:
 
 ## Current Distribution
 
-The current distribution mode is source-first.
-
-Supported install path after the repository is published:
+The lowest-friction universal install path remains source install:
 
 ```bash
 go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
 ```
 
-Prebuilt binaries, Homebrew packaging, signing, notarization, SBOMs, and provenance attestations are deferred until public distribution is justified.
+For tags produced after release automation was introduced, the release workflow also creates draft GitHub Releases with:
+
+- Linux, macOS, and Windows archives for amd64 and arm64;
+- a `checksums.txt` file using SHA-256;
+- artifact attestations generated from `dist/checksums.txt`;
+- embedded `wkit version` metadata for version, commit, date, dirty state, and builder.
+
+Homebrew packaging, signing, notarization, SBOM files, deb/rpm/apk packages, Scoop, and Winget are deferred.
 
 ## Release Readiness Checklist
 
@@ -43,6 +48,9 @@ Before tagging a release:
 - Confirm `docs/release-notes.md` matches shipped behavior.
 - Confirm `README.md` install and status sections are truthful.
 - Confirm compatibility claims are backed by `research/empirical-agent-compatibility-matrix.md`.
+- Run `make release-tools` if GoReleaser is not installed.
+- Run `make release-check`.
+- Run `make release-snapshot`.
 
 ## Tagging Flow
 
@@ -57,14 +65,12 @@ git tag -a v0.y.z -m "v0.y.z"
 git push origin v0.y.z
 ```
 
+The tag workflow creates a draft GitHub Release. Review the draft release notes, archives, checksums, and workflow result before publishing it.
+
 Do not create binary artifacts manually unless the release process explicitly documents them.
 
-## Deferred Release Automation
+## Homebrew Posture
 
-When public distribution needs prebuilt artifacts, add GoReleaser with:
+Homebrew is useful for user experience, but it is intentionally not shipped in this release automation pass.
 
-- Linux, macOS, and Windows builds for amd64 and arm64 where practical;
-- checksums;
-- changelog generation from committed release notes;
-- SBOM and provenance/attestation support;
-- Homebrew tap only after user demand is proven.
+The preferred next step is a dedicated tap repository with a source-build formula such as `johnkil/homebrew-tap`. GoReleaser's binary Homebrew cask support should wait until the project has a signing/notarization decision or a deliberately documented unsigned-binary caveat.

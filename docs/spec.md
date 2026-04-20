@@ -236,13 +236,13 @@ scenario:
   generated_at: 2026-04-19T12:00:00Z
   generated_by:
     tool: wkit
-    version: 0.x
+    version: 0.y.z
   semantics: reviewable-local-validation-snapshot
   notes:
     - v0.x scenarios pin revisions and local checks but do not guarantee full environment replay.
 
 tool_versions:
-  wkit: 0.x
+  wkit: 0.y.z
   git: 2.49.0
   extra: {}
 
@@ -507,6 +507,8 @@ It may additionally warn on:
 - `wkit status [--context <context-id>]`
 - `wkit doctor`
 - `wkit validate`
+- `wkit version`
+- `wkit --version`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
 - `wkit scenario pin <scenario-id> --change <change-id>`
@@ -541,6 +543,9 @@ mutate repository checkouts.
   for missing bindings, inaccessible checkouts, non-git checkouts, invalid or
   missing entrypoint `cwd` paths, and stale scenario locks. It exits `0` when
   there are no errors and `2` when there are errors; warnings alone do not fail.
+- `wkit version` prints local build metadata: version, commit, build date, dirty
+  state, and builder. `wkit --version` prints a compact single-line variant.
+  Neither form inspects a workspace, and both exit `0`.
 
 ### 9.3 Install commands
 
