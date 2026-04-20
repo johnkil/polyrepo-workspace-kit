@@ -234,6 +234,23 @@ func TestDoctorCombinesManifestAndLocalDiagnostics(t *testing.T) {
 	}
 }
 
+func TestDoctorReportsGitInspectionErrors(t *testing.T) {
+	root := seedWorkspace(t)
+	checkout := filepath.Join(t.TempDir(), "app-web")
+	if err := os.MkdirAll(checkout, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run(t, checkout, "git", "init")
+	if _, err := workspace.SetBinding(root, "app-web", checkout); err != nil {
+		t.Fatal(err)
+	}
+
+	report := Doctor(root)
+	if !contains(report.Warnings, "git inspection failed") {
+		t.Fatalf("expected git inspection warning, got %#v", report.Warnings)
+	}
+}
+
 func seedWorkspace(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "workspace")

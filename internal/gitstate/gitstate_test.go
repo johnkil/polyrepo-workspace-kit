@@ -147,6 +147,15 @@ func TestInspectReturnsNonGitWithoutError(t *testing.T) {
 	}
 }
 
+func TestInspectSurfacesWorktreeDetectionErrors(t *testing.T) {
+	t.Setenv("PATH", "")
+
+	_, err := Inspect(t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "executable file not found") {
+		t.Fatalf("expected missing git executable error, got %v", err)
+	}
+}
+
 func TestParseAheadBehind(t *testing.T) {
 	ahead, behind, ok := parseAheadBehind("12\t3\n")
 	if !ok || ahead != 12 || behind != 3 {

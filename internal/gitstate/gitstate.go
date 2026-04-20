@@ -79,7 +79,13 @@ func Capture(repoPath string) (State, error) {
 
 func Inspect(repoPath string) (CheckoutStatus, error) {
 	inside, err := run(repoPath, "git", "rev-parse", "--is-inside-work-tree")
-	if err != nil || strings.TrimSpace(inside) != "true" {
+	if err != nil {
+		if isNotGitError(err) {
+			return CheckoutStatus{Git: false}, nil
+		}
+		return CheckoutStatus{}, err
+	}
+	if strings.TrimSpace(inside) != "true" {
 		return CheckoutStatus{Git: false}, nil
 	}
 
@@ -204,6 +210,10 @@ func parseAheadBehind(out string) (int, int, bool) {
 		return 0, 0, false
 	}
 	return ahead, behind, true
+}
+
+func isNotGitError(err error) bool {
+	return strings.Contains(err.Error(), "not a git repository")
 }
 
 func run(dir string, name string, args ...string) (string, error) {

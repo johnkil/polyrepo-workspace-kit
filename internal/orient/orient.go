@@ -321,6 +321,9 @@ func localDiagnostics(root string) DoctorReport {
 		if status.BindingStatus == "ok" && status.GitStatus == "not-git" {
 			report.Warnings = append(report.Warnings, fmt.Sprintf("repo %s: bound path is not a git worktree: %s", repoID, status.BindingPath))
 		}
+		if status.BindingStatus == "ok" && status.GitStatus == "error" {
+			report.Warnings = append(report.Warnings, fmt.Sprintf("repo %s: git inspection failed for %s (%s)", repoID, status.BindingPath, status.Reason))
+		}
 		repoDoc, err := workspace.LoadRepo(root, repoID)
 		if err == nil && status.BindingStatus == "ok" {
 			report.Errors = append(report.Errors, entrypointCWDErrors(repoID, status.BindingPath, repoDoc)...)
