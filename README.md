@@ -12,11 +12,11 @@
 - Repository name: `polyrepo-workspace-kit`
 - Go module: `github.com/johnkil/polyrepo-workspace-kit`
 - CLI: `wkit`
-- Current status: v0.x source-first CLI implementation plus documentation and research baseline
+- Current status: v0.x CLI implementation with source install and tagged release archive automation
 
 Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
 
-This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, scenario pin/status/run, portable install, repo-scope tool adapters, and validation. Tool-specific user-scope installs and public packaging remain planned.
+This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, scenario pin/status/run, portable install, repo-scope tool adapters, validation, and version reporting. Tool-specific user-scope installs, Homebrew packaging, and signed/notarized binaries remain planned.
 
 Use it when you need to:
 
@@ -28,11 +28,13 @@ Use it when you need to:
 
 ## Quick Start
 
-Install the latest source-first release:
+Install from source:
 
 ```bash
 go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
 ```
+
+Tagged releases produced after release automation was added also provide prebuilt archives and `checksums.txt` on the [GitHub Releases page](https://github.com/johnkil/polyrepo-workspace-kit/releases).
 
 From a local checkout:
 
@@ -241,6 +243,8 @@ wkit overview
 wkit status [--context <context-id>]
 wkit doctor
 wkit validate
+wkit version
+wkit --version
 wkit change new <context> --title <title>
 wkit change show <change-id>
 wkit scenario pin <scenario-id> --change <change-id>

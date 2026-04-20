@@ -19,6 +19,8 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 - Added feature-level research on which bulk polyrepo Git manager ideas should inspire future `wkit` status, doctor, overview, and scenario drift workflows.
 - Added read-only orientation commands: `context list`, `context show`, `info`/`overview`, `status`, `scenario status`, and `doctor`.
 - Added local checkout diagnostics for git state, dirty/untracked counts, upstream/ahead/behind state, stale scenario locks, missing bindings, non-git checkouts, and invalid entrypoint `cwd` paths.
+- Added `wkit version` with build metadata for release archives and source builds.
+- Added GoReleaser release configuration, local release-check targets, and a tag-triggered draft GitHub Release workflow with archives, checksums, and checksum-based artifact attestations.
 
 ### Changed
 

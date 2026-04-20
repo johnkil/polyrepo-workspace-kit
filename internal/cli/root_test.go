@@ -31,6 +31,26 @@ func TestScenarioExitErrorPrioritizesCommandFailure(t *testing.T) {
 	}
 }
 
+func TestVersionCommand(t *testing.T) {
+	out, err := executeCLI("version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"wkit dev", "commit:", "date:", "dirty:", "builtBy:"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected %q in version output:\n%s", want, out)
+		}
+	}
+
+	out, err = executeCLI("--version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "wkit dev") || !strings.Contains(out, "builtBy=source") {
+		t.Fatalf("unexpected --version output:\n%s", out)
+	}
+}
+
 func TestContextCommands(t *testing.T) {
 	root := seedCLIWorkspace(t)
 	writeCLIContexts(t, root, map[string]model.Context{

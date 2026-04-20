@@ -92,7 +92,7 @@ directory as a static Pages artifact.
 It is intentionally small:
 
 - one-page overview;
-- source-first install command;
+- source install command;
 - links to source documents on GitHub:
   `docs/spec.md`, `docs/install.md`, `docs/implementation-plan.md`, and `docs/release.md`;
 - no new product claims beyond the shipped CLI and documented roadmap.

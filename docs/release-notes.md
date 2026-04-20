@@ -7,6 +7,10 @@
   `wkit status`, `wkit scenario status`, and `wkit doctor`.
 - `wkit status`, `wkit scenario status`, and `wkit doctor` inspect local truth
   without fetching remotes, mutating checkouts, or running scenario checks.
+- Added `wkit version` and release build metadata.
+- Added GoReleaser-based tagged release automation for draft GitHub Releases
+  with Linux/macOS/Windows archives, checksums, and checksum-based artifact
+  attestations.
 
 ## v0.1.0 - 2026-04-19
 
@@ -57,6 +61,6 @@ go build -o bin/wkit ./cmd/wkit
 
 CI currently runs the Go hygiene suite on supported Go release lines, plus race tests, coverage, fuzz smoke checks, Windows test/build coverage, and `govulncheck`.
 
-Prebuilt binaries, Homebrew, signing, notarization, and GoReleaser packaging are deferred until public distribution is justified.
+Homebrew, signing, notarization, and OS package managers remain deferred. Tagged releases produced after release automation was added can publish draft GitHub Releases with prebuilt archives and checksums.
 
 Release tags and readiness checks are documented in `docs/release.md`.

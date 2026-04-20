@@ -3,10 +3,12 @@ GO_BIN ?= $(shell $(GO) env GOPATH)/bin
 GOIMPORTS ?= $(GO_BIN)/goimports
 GOLANGCI_LINT ?= $(GO_BIN)/golangci-lint
 GOVULNCHECK ?= $(GO_BIN)/govulncheck
+GORELEASER ?= $(GO_BIN)/goreleaser
 
 GOIMPORTS_VERSION ?= v0.29.0
 GOLANGCI_LINT_VERSION ?= $(shell cat .golangci-lint-version)
 GOVULNCHECK_VERSION ?= v1.2.0
+GORELEASER_VERSION ?= v2.15.3
 GOIMPORTS_LOCAL ?= github.com/johnkil/polyrepo-workspace-kit
 
 BIN_DIR ?= bin
@@ -16,12 +18,15 @@ FUZZTIME ?= 5s
 
 GO_FILES := $(shell find . -type f -name '*.go' -not -path './.git/*' -not -path './vendor/*')
 
-.PHONY: tools fmt fmt-check tidy-check vet lint test test-race coverage fuzz vuln build demo check clean
+.PHONY: tools release-tools fmt fmt-check tidy-check vet lint test test-race coverage fuzz vuln build demo check release-check release-snapshot clean
 
 tools:
 	$(GO) install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
 	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	$(GO) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
+release-tools:
+	$(GO) install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
 
 fmt:
 	$(GOIMPORTS) -local $(GOIMPORTS_LOCAL) -w $(GO_FILES)
@@ -74,5 +79,12 @@ demo: build
 
 check: tidy-check fmt-check vet lint test test-race vuln demo
 
+release-check:
+	$(GORELEASER) check
+
+release-snapshot:
+	$(GORELEASER) release --snapshot --clean --release-notes docs/release-notes.md
+
 clean:
 	rm -f $(WKIT_BIN) $(COVERAGE_FILE)
+	rm -rf dist
