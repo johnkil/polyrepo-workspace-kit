@@ -1,14 +1,53 @@
 # Install and Development
 ## Polyrepo Workspace Kit
 
-Status: v0.x source install plus tagged release archive instructions
+Status: v0.x release archive installer, source install, and local development instructions
 
 ## Requirements
 
-- Go 1.25 or newer
-- Git
+- Git for normal `wkit` workspace operations.
+- macOS or Linux, plus `curl` or `wget`, `tar`, and `sha256sum` or `shasum`
+  for the release archive installer.
+- Go 1.25 or newer for source installs and local development.
 
 `wkit` uses the real `git` binary for local repository state capture.
+
+## Install a Prebuilt Binary
+
+On macOS or Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh
+```
+
+The installer:
+
+- resolves the latest GitHub Release by default;
+- downloads the matching macOS or Linux archive for `amd64`/`arm64`;
+- verifies the archive against `checksums.txt`;
+- installs `wkit` into the first writable absolute directory already on
+  `PATH`;
+- refuses to overwrite a symlink target.
+
+No shell startup file changes are needed when the selected install directory is
+already on `PATH`.
+
+Install a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh -s -- --version v0.2.0
+```
+
+Install into an explicit directory:
+
+```bash
+curl -fsSL -o /tmp/wkit-install.sh https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh
+sudo WKIT_INSTALL_DIR=/usr/local/bin sh /tmp/wkit-install.sh
+```
+
+Use `WKIT_INSTALL_DIR` only for an absolute directory. If that directory is not
+on `PATH`, the installer prints a warning and `wkit` will not be discoverable
+until your shell can find that directory.
 
 ## Local Development
 
@@ -62,7 +101,7 @@ Source installs may report `wkit version` as `dev` when the Go toolchain does no
 
 ## Release Archive Install
 
-Tagged releases produced after release automation was added publish prebuilt archives for:
+Tagged releases publish prebuilt archives for:
 
 - Linux amd64 and arm64
 - macOS amd64 and arm64
@@ -71,7 +110,7 @@ Tagged releases produced after release automation was added publish prebuilt arc
 Download the matching archive and `checksums.txt` from the GitHub Releases page:
 
 ```bash
-version=0.y.z
+version=0.2.0
 os=darwin
 arch=arm64
 base="https://github.com/johnkil/polyrepo-workspace-kit/releases/download/v${version}"

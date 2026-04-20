@@ -6,6 +6,10 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
+### Added
+
+- Added a macOS/Linux `install.sh` for checksum-verified release archive installs without requiring Go.
+
 ### Fixed
 
 - Allowed custom release notes passed to GoReleaser to populate future draft GitHub Releases.

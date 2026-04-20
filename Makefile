@@ -18,7 +18,7 @@ FUZZTIME ?= 5s
 
 GO_FILES := $(shell find . -type f -name '*.go' -not -path './.git/*' -not -path './vendor/*')
 
-.PHONY: tools release-tools fmt fmt-check tidy-check vet lint test test-race coverage fuzz vuln build demo check release-check release-snapshot clean
+.PHONY: tools release-tools fmt fmt-check tidy-check vet lint test test-race coverage fuzz vuln build demo install-script-check check release-check release-snapshot clean
 
 tools:
 	$(GO) install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
@@ -77,7 +77,11 @@ build:
 demo: build
 	WKIT_BIN="$(PWD)/$(WKIT_BIN)" sh examples/minimal-workspace/run-demo.sh
 
-check: tidy-check fmt-check vet lint test test-race vuln demo
+install-script-check:
+	sh -n install.sh
+	sh install.sh --help >/dev/null
+
+check: tidy-check fmt-check vet lint test test-race vuln demo install-script-check
 
 release-check:
 	$(GORELEASER) check

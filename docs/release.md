@@ -1,6 +1,6 @@
 # Release and Versioning
 
-Status: v0.x source install plus tagged release archive policy
+Status: v0.x release archive installer plus source install policy
 
 ## Versioning
 
@@ -21,13 +21,24 @@ Before `v1.0.0`, compatibility promises are intentionally narrow:
 
 ## Current Distribution
 
-The lowest-friction universal install path remains source install:
+The lowest-friction macOS and Linux install path is the release archive
+installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh
+```
+
+It downloads the latest GitHub Release archive, verifies `checksums.txt`, and
+installs `wkit` into a writable directory already on `PATH`.
+
+Source install remains available when Go is already present:
 
 ```bash
 go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
 ```
 
-For tags produced after release automation was introduced, the release workflow also creates draft GitHub Releases with:
+For tags produced after release automation was introduced, the release workflow
+creates draft GitHub Releases with:
 
 - Linux, macOS, and Windows archives for amd64 and arm64;
 - a `checksums.txt` file using SHA-256;
@@ -47,6 +58,7 @@ Before tagging a release:
 - Confirm `CHANGELOG.md` describes user-visible changes.
 - Confirm `docs/release-notes.md` matches shipped behavior.
 - Confirm `README.md` install and status sections are truthful.
+- Confirm `install.sh --help` and release snapshot checks pass through `make check` and `make release-snapshot`.
 - Confirm compatibility claims are backed by `research/empirical-agent-compatibility-matrix.md`.
 - Run `make release-tools` if GoReleaser is not installed.
 - Run `make release-check`.
