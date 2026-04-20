@@ -9,6 +9,7 @@ import (
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/install"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/orient"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/scenario"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/validate"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/workspace"
@@ -61,8 +62,12 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newInitCommand())
 	root.AddCommand(newRepoCommand(&workspaceFlag))
 	root.AddCommand(newBindCommand(&workspaceFlag))
+	root.AddCommand(newContextCommand(&workspaceFlag))
 	root.AddCommand(newChangeCommand(&workspaceFlag))
 	root.AddCommand(newScenarioCommand(&workspaceFlag))
+	root.AddCommand(newInfoCommand(&workspaceFlag))
+	root.AddCommand(newStatusCommand(&workspaceFlag))
+	root.AddCommand(newDoctorCommand(&workspaceFlag))
 	root.AddCommand(newInstallCommand(&workspaceFlag))
 	root.AddCommand(newValidateCommand(&workspaceFlag))
 
@@ -169,6 +174,73 @@ func newBindSetCommand(workspaceFlag *string) *cobra.Command {
 	}
 }
 
+func newContextCommand(workspaceFlag *string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "context",
+		Short: "Inspect named workspace contexts",
+	}
+	cmd.AddCommand(newContextListCommand(workspaceFlag))
+	cmd.AddCommand(newContextShowCommand(workspaceFlag))
+	return cmd
+}
+
+func newContextListCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List named contexts",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			contexts, err := orient.ListContexts(root)
+			if err != nil {
+				return err
+			}
+			if err := writeln(cmd, "contexts:"); err != nil {
+				return err
+			}
+			for _, context := range contexts {
+				if err := writef(cmd, "- %s repos=%d\n", context.ID, context.RepoCount); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
+func newContextShowCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <context-id>",
+		Short: "Show a named context",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			context, err := orient.GetContext(root, args[0])
+			if err != nil {
+				return err
+			}
+			if err := writef(cmd, "context: %s\n", args[0]); err != nil {
+				return err
+			}
+			if err := writeln(cmd, "repos:"); err != nil {
+				return err
+			}
+			for _, repoID := range context.Repos {
+				if err := writef(cmd, "- %s\n", repoID); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
 func newChangeCommand(workspaceFlag *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "change",
@@ -243,13 +315,13 @@ func newValidateCommand(workspaceFlag *string) *cobra.Command {
 				return err
 			}
 			report := validate.Workspace(root)
-			for _, warning := range report.Warnings {
-				if err := writef(cmd, "warning: %s\n", warning); err != nil {
+			for _, item := range report.Errors {
+				if err := writef(cmd, "error: %s\n", item); err != nil {
 					return err
 				}
 			}
-			for _, item := range report.Errors {
-				if err := writef(cmd, "error: %s\n", item); err != nil {
+			for _, warning := range report.Warnings {
+				if err := writef(cmd, "warning: %s\n", warning); err != nil {
 					return err
 				}
 			}
@@ -271,6 +343,7 @@ func newScenarioCommand(workspaceFlag *string) *cobra.Command {
 	}
 	cmd.AddCommand(newScenarioPinCommand(workspaceFlag))
 	cmd.AddCommand(newScenarioShowCommand(workspaceFlag))
+	cmd.AddCommand(newScenarioStatusCommand(workspaceFlag))
 	cmd.AddCommand(newScenarioRunCommand(workspaceFlag))
 	return cmd
 }
@@ -322,6 +395,31 @@ func newScenarioShowCommand(workspaceFlag *string) *cobra.Command {
 	}
 }
 
+func newScenarioStatusCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "status <scenario-id>",
+		Short: "Compare current checkouts with a scenario lock",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			report, err := orient.ScenarioStatus(root, args[0])
+			if err != nil {
+				return err
+			}
+			if err := printScenarioStatus(cmd, report); err != nil {
+				return err
+			}
+			if report.Drift || report.Blocked || report.Missing {
+				return &ExitError{Code: 4}
+			}
+			return nil
+		},
+	}
+}
+
 func newScenarioRunCommand(workspaceFlag *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "run <scenario-id>",
@@ -352,6 +450,80 @@ func newScenarioRunCommand(workspaceFlag *string) *cobra.Command {
 	}
 }
 
+func newInfoCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:     "info",
+		Aliases: []string{"overview"},
+		Short:   "Show a workspace overview",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			info, err := orient.WorkspaceInfo(root)
+			if err != nil {
+				return err
+			}
+			return printInfo(cmd, info)
+		},
+	}
+}
+
+func newStatusCommand(workspaceFlag *string) *cobra.Command {
+	var contextID string
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show local checkout status without fetching remotes",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			report, err := orient.WorkspaceStatus(root, orient.StatusOptions{ContextID: contextID})
+			if err != nil {
+				return err
+			}
+			return printWorkspaceStatus(cmd, report)
+		},
+	}
+	cmd.Flags().StringVar(&contextID, "context", "", "limit status to a named context")
+	return cmd
+}
+
+func newDoctorCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "doctor",
+		Short: "Diagnose workspace and local checkout readiness",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			report := orient.Doctor(root)
+			for _, warning := range report.Warnings {
+				if err := writef(cmd, "warning: %s\n", warning); err != nil {
+					return err
+				}
+			}
+			for _, item := range report.Errors {
+				if err := writef(cmd, "error: %s\n", item); err != nil {
+					return err
+				}
+			}
+			if err := writef(cmd, "summary: errors=%d warnings=%d\n", len(report.Errors), len(report.Warnings)); err != nil {
+				return err
+			}
+			if len(report.Errors) > 0 {
+				return &ExitError{Code: 2}
+			}
+			return nil
+		},
+	}
+}
+
 func printScenarioOutcome(cmd *cobra.Command, outcome model.ScenarioRunOutcome) error {
 	reason := ""
 	if outcome.Reason != "" {
@@ -371,6 +543,139 @@ func printScenarioOutcome(cmd *cobra.Command, outcome model.ScenarioRunOutcome) 
 		}
 	}
 	return nil
+}
+
+func printInfo(cmd *cobra.Command, info orient.Info) error {
+	if err := writef(cmd, "workspace: %s\n", info.WorkspaceID); err != nil {
+		return err
+	}
+	if err := writef(cmd, "root: %s\n", info.Root); err != nil {
+		return err
+	}
+	if err := writef(cmd, "repos: %d\n", info.RepoCount); err != nil {
+		return err
+	}
+	if err := printCounts(cmd, "repo_kinds", info.RepoKinds); err != nil {
+		return err
+	}
+	if err := printCounts(cmd, "relation_kinds", info.RelationKinds); err != nil {
+		return err
+	}
+	if err := writeln(cmd, "contexts:"); err != nil {
+		return err
+	}
+	for _, context := range info.Contexts {
+		if err := writef(cmd, "- %s repos=%d\n", context.ID, context.RepoCount); err != nil {
+			return err
+		}
+	}
+	if err := writef(cmd, "changes: %d latest=%s\n", info.ChangeCount, info.LatestChange); err != nil {
+		return err
+	}
+	if err := writef(cmd, "scenarios: %d latest=%s\n", info.ScenarioCount, info.LatestScenario); err != nil {
+		return err
+	}
+	if err := writef(cmd, "bindings: %d/%d\n", info.BoundRepos, info.TotalRepos); err != nil {
+		return err
+	}
+	if err := writef(cmd, "guidance: rules=%d skills=%d\n", info.GuidanceRules, info.GuidanceSkills); err != nil {
+		return err
+	}
+	if err := writeln(cmd, "next:"); err != nil {
+		return err
+	}
+	for _, next := range []string{"wkit validate", "wkit status", "wkit scenario pin <scenario-id> --change <change-id>", "wkit scenario run <scenario-id>"} {
+		if err := writef(cmd, "- %s\n", next); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printCounts(cmd *cobra.Command, label string, counts []orient.Count) error {
+	if err := writef(cmd, "%s:\n", label); err != nil {
+		return err
+	}
+	if len(counts) == 0 {
+		return writeln(cmd, "- none: 0")
+	}
+	for _, count := range counts {
+		if err := writef(cmd, "- %s: %d\n", count.Name, count.Count); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printWorkspaceStatus(cmd *cobra.Command, report orient.StatusReport) error {
+	if err := writeln(cmd, "repos:"); err != nil {
+		return err
+	}
+	for _, repo := range report.Repos {
+		if err := printRepoStatus(cmd, repo); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printScenarioStatus(cmd *cobra.Command, report orient.ScenarioStatusReport) error {
+	if err := writef(cmd, "scenario: %s\n", report.ScenarioID); err != nil {
+		return err
+	}
+	if err := writeln(cmd, "repos:"); err != nil {
+		return err
+	}
+	for _, repo := range report.Repos {
+		line := fmt.Sprintf("- [%s] %s pinned=%s current=%s branch=%s", repo.ScenarioStatus, repo.RepoID, valueOrDash(repo.PinnedCommit), valueOrDash(repo.CurrentCommit), branchLabel(repo))
+		if repo.ScenarioReason != "" {
+			line += " reason=" + repo.ScenarioReason
+		}
+		if err := writeln(cmd, line); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printRepoStatus(cmd *cobra.Command, repo orient.RepoStatus) error {
+	line := fmt.Sprintf("- %s binding=%s git=%s branch=%s commit=%s dirty=%s untracked=%s upstream=%s ahead=%s behind=%s",
+		repo.RepoID,
+		repo.BindingStatus,
+		repo.GitStatus,
+		branchLabel(repo),
+		valueOrDash(repo.Commit),
+		intOrDash(repo.GitStatus == "ok", repo.DirtyFiles),
+		intOrDash(repo.GitStatus == "ok", repo.UntrackedFiles),
+		repo.Upstream,
+		intOrDash(repo.HasUpstream, repo.Ahead),
+		intOrDash(repo.HasUpstream, repo.Behind),
+	)
+	if repo.Reason != "" {
+		line += " reason=" + repo.Reason
+	}
+	return writeln(cmd, line)
+}
+
+func branchLabel(repo orient.RepoStatus) string {
+	if repo.Detached {
+		return "detached"
+	}
+	return valueOrDash(repo.Branch)
+}
+
+func valueOrDash(value string) string {
+	if value == "" {
+		return "-"
+	}
+	return value
+}
+
+func intOrDash(ok bool, value int) string {
+	if !ok {
+		return "-"
+	}
+	return fmt.Sprintf("%d", value)
 }
 
 func scenarioExitError(result scenario.RunResult) error {

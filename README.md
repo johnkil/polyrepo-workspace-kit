@@ -16,7 +16,7 @@
 
 Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
 
-This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, change creation/showing, scenario pin/run, portable install, repo-scope tool adapters, and validation. Tool-specific user-scope installs and public packaging remain planned.
+This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, scenario pin/status/run, portable install, repo-scope tool adapters, and validation. Tool-specific user-scope installs and public packaging remain planned.
 
 Use it when you need to:
 
@@ -234,13 +234,22 @@ Implemented commands:
 wkit init <path>
 wkit repo register <repo-id> --kind <kind>
 wkit bind set <repo-id> <path>
+wkit context list
+wkit context show <context-id>
+wkit info
+wkit overview
+wkit status [--context <context-id>]
+wkit doctor
 wkit validate
 wkit change new <context> --title <title>
 wkit change show <change-id>
 wkit scenario pin <scenario-id> --change <change-id>
 wkit scenario show <scenario-id>
+wkit scenario status <scenario-id>
 wkit scenario run <scenario-id>
 ```
+
+Orientation and diagnostic commands are read-only. `wkit status`, `wkit doctor`, and `wkit scenario status` do not run remote fetches, do not execute scenario checks, and do not mutate local checkouts.
 
 Implemented install commands:
 

@@ -1,6 +1,9 @@
 package gitstate
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -22,5 +25,129 @@ func TestParseStatusPorcelainV2ZHandlesSpacesAndRenames(t *testing.T) {
 	wantUntracked := []string{"new file.txt"}
 	if !reflect.DeepEqual(untracked, wantUntracked) {
 		t.Fatalf("untracked paths mismatch:\nwant %#v\ngot  %#v", wantUntracked, untracked)
+	}
+}
+
+func TestInspectReportsLocalOnlyGitState(t *testing.T) {
+	repo := filepath.Join(t.TempDir(), "repo")
+	initGitRepo(t, repo)
+
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("# changed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "new.txt"), []byte("new\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := Inspect(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Git {
+		t.Fatal("expected git checkout")
+	}
+	if status.Clean {
+		t.Fatal("expected dirty checkout")
+	}
+	if len(status.DirtyPaths) != 1 || status.DirtyPaths[0] != "README.md" {
+		t.Fatalf("unexpected dirty paths: %#v", status.DirtyPaths)
+	}
+	if len(status.UntrackedPaths) != 1 || status.UntrackedPaths[0] != "new.txt" {
+		t.Fatalf("unexpected untracked paths: %#v", status.UntrackedPaths)
+	}
+	if status.HasUpstream {
+		t.Fatalf("expected no upstream, got %q", status.Upstream)
+	}
+}
+
+func TestInspectReportsAheadBehindFromLocalRemoteTrackingRefs(t *testing.T) {
+	tmp := t.TempDir()
+	remote := filepath.Join(tmp, "remote.git")
+	seed := filepath.Join(tmp, "seed")
+	local := filepath.Join(tmp, "local")
+	other := filepath.Join(tmp, "other")
+
+	gitRun(t, tmp, "git", "init", "--bare", remote)
+	initGitRepo(t, seed)
+	gitRun(t, seed, "git", "remote", "add", "origin", remote)
+	gitRun(t, seed, "git", "push", "-u", "origin", "HEAD")
+	gitRun(t, tmp, "git", "clone", remote, local)
+	gitRun(t, tmp, "git", "clone", remote, other)
+	configUser(t, local)
+	configUser(t, other)
+
+	if err := os.WriteFile(filepath.Join(local, "local.txt"), []byte("local\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, local, "git", "add", ".")
+	gitRun(t, local, "git", "commit", "-m", "local")
+
+	if err := os.WriteFile(filepath.Join(other, "remote.txt"), []byte("remote\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, other, "git", "add", ".")
+	gitRun(t, other, "git", "commit", "-m", "remote")
+	gitRun(t, other, "git", "push")
+	gitRun(t, local, "git", "fetch", "origin")
+
+	status, err := Inspect(local)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.HasUpstream {
+		t.Fatalf("expected upstream, got %#v", status)
+	}
+	if status.Ahead != 1 || status.Behind != 1 {
+		t.Fatalf("expected ahead=1 behind=1, got ahead=%d behind=%d", status.Ahead, status.Behind)
+	}
+}
+
+func TestInspectReturnsNonGitWithoutError(t *testing.T) {
+	status, err := Inspect(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Git {
+		t.Fatalf("expected non-git status, got %#v", status)
+	}
+}
+
+func TestParseAheadBehind(t *testing.T) {
+	ahead, behind, ok := parseAheadBehind("12\t3\n")
+	if !ok || ahead != 12 || behind != 3 {
+		t.Fatalf("unexpected parse result: ahead=%d behind=%d ok=%v", ahead, behind, ok)
+	}
+	if _, _, ok := parseAheadBehind("bad"); ok {
+		t.Fatal("expected parse failure")
+	}
+}
+
+func initGitRepo(t *testing.T, root string) {
+	t.Helper()
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, root, "git", "init")
+	configUser(t, root)
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("# repo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, root, "git", "add", ".")
+	gitRun(t, root, "git", "commit", "-m", "init")
+}
+
+func configUser(t *testing.T, dir string) {
+	t.Helper()
+	gitRun(t, dir, "git", "config", "user.email", "test@example.com")
+	gitRun(t, dir, "git", "config", "user.name", "Test User")
+}
+
+func gitRun(t *testing.T, dir string, name string, args ...string) {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
 	}
 }

@@ -2,7 +2,7 @@
 ## Polyrepo Workspace Kit
 
 Status: Working engineering plan
-Last updated: 2026-04-19
+Last updated: 2026-04-20
 
 ## Purpose
 
@@ -22,10 +22,17 @@ Implemented commands:
 - `wkit init <path>`
 - `wkit repo register <repo-id> --kind <kind>`
 - `wkit bind set <repo-id> <path>`
+- `wkit context list`
+- `wkit context show <context-id>`
+- `wkit info`
+- `wkit overview`
+- `wkit status [--context <context-id>]`
+- `wkit doctor`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
 - `wkit scenario pin <scenario-id> --change <change-id>`
 - `wkit scenario show <scenario-id>`
+- `wkit scenario status <scenario-id>`
 - `wkit scenario run <scenario-id>`
 - `wkit install show-targets <tool> [repo-id]`
 - `wkit install plan <tool> [repo-id]`
@@ -50,6 +57,7 @@ Implemented packages:
 - `internal/install`
 - `internal/manifest`
 - `internal/model`
+- `internal/orient`
 - `internal/scenario`
 - `internal/validate`
 - `internal/workspace`
@@ -191,6 +199,27 @@ Current packaging posture:
 - GoReleaser is not configured yet because public distribution has not been justified.
 - `.github/workflows/test.yml` validates formatting, module tidiness, vet, lint, tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, build, and the minimal example without publishing artifacts.
 - `.github/dependabot.yml` keeps Go module and GitHub Actions updates visible on a weekly cadence.
+
+## Milestone 6: Orientation and Diagnostics
+
+Status: done
+
+Scope:
+
+- `wkit context list`
+- `wkit context show <context-id>`
+- `wkit info` with alias `wkit overview`
+- `wkit status [--context <context-id>]`
+- `wkit scenario status <scenario-id>`
+- `wkit doctor`
+
+Acceptance:
+
+- commands are read-only and do not clone, fetch, pull, push, switch branches, commit, or run scenario checks;
+- status reports binding state, branch/detached state, short commit, dirty/untracked counts, upstream, and local ahead/behind counts when an upstream ref exists;
+- scenario status reports `ok`, `drift`, `missing`, and `blocked` against the pinned lock without executing entrypoints;
+- doctor combines manifest validation with local diagnostics for bindings, git checkouts, entrypoint `cwd` paths, and stale scenario locks;
+- tests cover context listing/showing, info counts, status git states, scenario status drift/blocked states, and doctor exits/diagnostics.
 
 ## Deferred
 

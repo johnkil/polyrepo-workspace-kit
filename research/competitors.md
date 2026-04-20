@@ -22,6 +22,7 @@ The most important direct-adjacent competitor is [agents.ge](https://agents.ge/)
 | Cross-repo change platforms | Sourcegraph Batch Changes | Large-scale code changes and PR tracking | Medium-high | Enterprise/platform oriented, not a small local workspace source of truth |
 | Multi-repo manifests | Android `repo`, Zephyr `west`, `vcstool` | Checkout/update many repos from manifest files | Medium | Usually checkout/version focused, not agent context or change narratives |
 | Multi-repo command utilities | `gita`, `myrepos`-style tools | Run git/status commands across many repos | Medium | Useful utilities, but shallow semantics |
+| Bulk polyrepo git managers | `polyrepopro/polyrepo` | Sync, pull, push, commit, status, switch, and run commands across configured repos | Medium | Operates repositories, but does not model cross-repo change intent, validation evidence, or agent guidance |
 | Bulk PR tools | `multi-gitter`, `git-xargs` | Run commands across repos and open PRs | Medium | Great for mechanical changes, weaker at workspace meaning |
 | Monorepo/build platforms | Nx, Turborepo, Bazel, Pants | Build/test/task graphs, caching, dependency execution | Medium | Strong if user can be monorepo-like; not the same as polyrepo coordination |
 | Developer portals | Backstage | Ownership, service catalog, metadata, discovery | Medium | Heavy platform category, not local active-change workflow |
@@ -76,6 +77,32 @@ Differentiation:
 - They do not aim to be a durable workspace model.
 - They do not explain relationships, contexts, or scenario validation.
 - They are execution tools more than coordination tools.
+
+## Bulk Polyrepo Git Managers
+
+### polyrepopro/polyrepo
+
+[polyrepopro/polyrepo](https://github.com/polyrepopro/polyrepo) is a small Go CLI that uses a `.polyrepo.yaml` file to operate across a configured set of repositories. Its documented surface is centered on local and remote Git operations such as `sync`, `pull`, `push`, `commit`, `status`, `switch`, and `run`/watch.
+
+Threat:
+
+- It owns the direct `polyrepo` CLI name and the clean "manage polyrepo workspaces" category label.
+- It validates that developers want a shared config for repeated multi-repo local operations.
+- If `wkit` is described as "manage many repos", users may reasonably compare it to this category first.
+
+Observed limitations for `wkit` positioning:
+
+- The model is repository-operation centric: workspace, repository path, branch, tags, runners, and auth.
+- It does not appear to model cross-repo relationships, change narratives, scenario locks, validation reports, or derived agent guidance.
+- The CLI encourages broad mutation operations such as committing, pushing, pulling, switching branches, and syncing all configured repositories.
+- The public CLI repository currently has a brittle local-path test, which is a useful reminder that multi-repo tools need disciplined local-environment boundaries.
+
+Differentiation:
+
+- `wkit` should not compete as a safer or broader `pull/push/status` wrapper.
+- `wkit` should present Git status and checkout binding as supporting context for `change` and `scenario`, not as the product center.
+- `wkit` should keep repository mutation narrow and explicit; reviewable scenario evidence is more important than bulk repository operation.
+- Messaging should use phrases like "coordinate cross-repo changes" and "pin validation evidence" rather than "manage polyrepo workspaces" by itself.
 
 ## Multi-Repo Manifest Tools
 
