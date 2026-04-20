@@ -190,6 +190,7 @@ Acceptance:
 Current packaging posture:
 
 - source installs and local builds are documented;
+- macOS/Linux release archive installs are supported by `install.sh`;
 - Go module path is `github.com/johnkil/polyrepo-workspace-kit`;
 - the minimal example includes a committed scenario artifact snapshot;
 - GitHub Issues are documented for public support and non-sensitive conduct reports;
@@ -200,6 +201,7 @@ Current packaging posture:
 - clean-repo empirical Codex and Claude Code adapter notes are recorded in `research/empirical-agent-compatibility-matrix.md`;
 - public binary release automation is configured for tagged draft GitHub Releases;
 - GoReleaser builds Linux, macOS, and Windows archives for amd64 and arm64, plus checksums and build metadata;
+- `install.sh` downloads tagged release archives, verifies `checksums.txt`, and installs into an existing `PATH` directory without requiring Go;
 - `.github/workflows/test.yml` validates formatting, module tidiness, vet, lint, tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, build, and the minimal example without publishing artifacts.
 - `.github/dependabot.yml` keeps Go module and GitHub Actions updates visible on a weekly cadence.
 
@@ -243,6 +245,24 @@ Acceptance:
 - release workflow uploads `checksums.txt` and creates artifact attestations from it;
 - GitHub Releases are draft by default for maintainer review before publishing;
 - Homebrew, signing, notarization, OS packages, Scoop, and Winget remain deferred and documented honestly.
+
+## Milestone 8: Binary Install UX
+
+Status: done
+
+Scope:
+
+- root `install.sh` for macOS/Linux release archive installs;
+- README and install docs that lead with the no-Go binary install path;
+- `make check` coverage for installer syntax and help output.
+
+Acceptance:
+
+- installer resolves the latest release by default and supports explicit versions;
+- installer detects macOS/Linux and amd64/arm64 archive names;
+- installer verifies `checksums.txt` before writing;
+- installer writes only into an absolute install directory and refuses symlink targets;
+- the default install path uses an existing writable `PATH` directory, so shell startup edits are not required when such a directory exists.
 
 ## Deferred
 

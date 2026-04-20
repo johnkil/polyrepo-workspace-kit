@@ -12,7 +12,7 @@
 - Repository name: `polyrepo-workspace-kit`
 - Go module: `github.com/johnkil/polyrepo-workspace-kit`
 - CLI: `wkit`
-- Current status: v0.x CLI implementation with source install and tagged release archive automation
+- Current status: v0.x CLI implementation with release archive install, source install, and tagged release automation
 
 Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
 
@@ -28,13 +28,29 @@ Use it when you need to:
 
 ## Quick Start
 
-Install from source:
+Install a prebuilt binary on macOS or Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh
+```
+
+The installer downloads the latest GitHub Release archive, verifies
+`checksums.txt`, and installs `wkit` into the first writable directory already
+on `PATH`. If no writable `PATH` directory exists, install into a system path
+without editing shell startup files:
+
+```bash
+curl -fsSL -o /tmp/wkit-install.sh https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh
+sudo WKIT_INSTALL_DIR=/usr/local/bin sh /tmp/wkit-install.sh
+```
+
+Install from source with Go:
 
 ```bash
 go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
 ```
 
-Tagged releases produced after release automation was added also provide prebuilt archives and `checksums.txt` on the [GitHub Releases page](https://github.com/johnkil/polyrepo-workspace-kit/releases).
+Tagged releases also provide prebuilt archives and `checksums.txt` on the [GitHub Releases page](https://github.com/johnkil/polyrepo-workspace-kit/releases).
 
 From a local checkout:
 
