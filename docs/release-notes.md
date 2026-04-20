@@ -1,5 +1,30 @@
 # Release Notes
 
+## Unreleased
+
+This development line adds a local VS Code multi-root workspace export for
+opening a bound `wkit` workspace in VS Code without committing editor metadata
+to bound repositories.
+
+### Highlights
+
+- Added `wkit vscode plan`, `wkit vscode diff`, `wkit vscode apply`, and
+  `wkit vscode open`.
+- Generated `local/vscode/workspace.code-workspace` as a disposable local
+  artifact with workspace folders and VS Code tasks derived from canonical
+  `wkit` manifests.
+- Added `docs/vscode.md` with the workflow, safety behavior, and smoke-test
+  checklist for the VS Code export.
+
+### Behavior Notes
+
+- The VS Code export requires local bindings for all declared repos before it
+  renders a complete workspace file.
+- Generated repo tasks use repo entrypoints from `repos/<repo-id>/repo.yaml`;
+  `wkit` does not invent central repo commands.
+- The export follows conservative overwrite behavior with `--force`,
+  `--backup`, `--dry-run`, and `--yes`.
+
 ## v0.2.0 - 2026-04-20
 
 This release adds the first read-only orientation layer and the first tagged

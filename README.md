@@ -14,9 +14,9 @@
 - CLI: `wkit`
 - Current status: v0.x CLI implementation with release archive install, source install, and tagged release automation
 
-Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
+Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, generated VS Code multi-root workspaces, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
 
-This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, scenario pin/status/run, portable install, repo-scope tool adapters, validation, and version reporting. Tool-specific user-scope installs, Homebrew packaging, and signed/notarized binaries remain planned.
+This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, scenario pin/status/run, VS Code multi-root workspace export, portable install, repo-scope tool adapters, validation, and version reporting. Tool-specific user-scope installs, Homebrew packaging, and signed/notarized binaries remain planned.
 
 Use it when you need to:
 
@@ -90,7 +90,7 @@ The strongest wedge is therefore:
 
 ## Layers
 
-The project has four layers.
+The project has five layers.
 
 ### 1. Core Workspace
 
@@ -118,7 +118,19 @@ Portable outputs are derived artifacts:
 - `AGENTS.md`
 - `.agents/skills/*`
 
-### 3. Adapters
+### 3. IDE Orientation
+
+IDE orientation exports local, disposable editor metadata from the canonical
+workspace model.
+
+- `local/vscode/workspace.code-workspace` - a generated VS Code multi-root
+  workspace file containing bound repo folders, `wkit` tasks, and repo
+  entrypoint tasks
+
+The VS Code export is a local derived artifact. It does not write `.vscode/*`
+files into bound repositories by default.
+
+### 4. Adapters
 
 Adapters install derived guidance into real tool discovery scopes. Adapter outputs are not canonical truth.
 
@@ -138,7 +150,7 @@ Initial v0.x target surface:
 
 These targets are docs-backed until compatibility probes record tool version, probe date, target path, and observed behavior. Tool-specific user-scope targets for Codex, OpenCode, Copilot, and Claude remain candidate/unverified until empirical compatibility passes validate them.
 
-### 4. Packs
+### 5. Packs
 
 Packs are a future distribution layer for reusable installs, plugins, or MCP-heavy bundles.
 
@@ -187,6 +199,8 @@ workspace/
     reports/
       <scenario-id>/
         <run-id>.yaml
+    vscode/
+      workspace.code-workspace
   runtime/
   config/
   bin/
@@ -196,7 +210,7 @@ State classes:
 
 - Canonical shared state: `coordination/*`, `repos/*/repo.yaml`, `guidance/rules/*`, `guidance/skills/*`
 - Canonical machine-local state: `local/bindings.yaml`
-- Derived state: scenario run reports and adapter outputs
+- Derived state: scenario run reports, VS Code workspace exports, and adapter outputs
 
 ## Scenario Semantics
 
@@ -267,6 +281,10 @@ wkit scenario pin <scenario-id> --change <change-id>
 wkit scenario show <scenario-id>
 wkit scenario status <scenario-id>
 wkit scenario run <scenario-id>
+wkit vscode plan
+wkit vscode diff
+wkit vscode apply
+wkit vscode open
 ```
 
 Orientation and diagnostic commands are read-only. `wkit status`, `wkit doctor`, and `wkit scenario status` do not run remote fetches, do not execute scenario checks, and do not mutate local checkouts.
@@ -324,6 +342,7 @@ Core docs:
 - [Proof and Pilot Plan](docs/plan.md)
 - [Implementation Plan](docs/implementation-plan.md)
 - [Install and Development](docs/install.md)
+- [VS Code Workspace Export](docs/vscode.md)
 - [Release and Versioning](docs/release.md)
 - [Release Notes](docs/release-notes.md)
 - [ADR 0001: CLI Tech Stack](docs/adr/0001-tech-stack.md)

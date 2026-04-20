@@ -3,7 +3,7 @@
 
 Status: Accepted for v0.x baseline
 Authors: Project maintainers
-Last updated: 2026-04-19
+Last updated: 2026-04-20
 
 ## 1. Context
 
@@ -19,14 +19,15 @@ This RFC defines the accepted v0.x layering and the boundaries that should remai
 
 ## 2. Decision
 
-The project adopts four layers:
+The project adopts five layers:
 
 1. **Core workspace**
 2. **Portable guidance**
-3. **Adapters**
-4. **Packs** (future, deferred)
+3. **IDE orientation**
+4. **Adapters**
+5. **Packs** (future, deferred)
 
-Only the first layer is the true canonical coordination model. The second layer is canonical content but not the coordination model. The third and fourth layers are derived or optional.
+Only the first layer is the true canonical coordination model. The second layer is canonical content but not the coordination model. The remaining layers are derived or optional.
 
 ## 3. Accepted thesis
 
@@ -67,13 +68,19 @@ Portable guidance exists because there is enough convergence around:
 
 Portable guidance remains narrow by design.
 
-### 4.3 Adapters
+### 4.3 IDE orientation
+
+IDE orientation derives local editor metadata, such as a VS Code multi-root
+workspace file, from canonical workspace state. It improves day-to-day human
+workflow without making editor files canonical.
+
+### 4.4 Adapters
 
 Adapters translate canonical guidance into real discovery scopes for specific tools.
 
 Adapters are **versioned compatibility layers**, not timeless truth.
 
-### 4.4 Packs
+### 4.5 Packs
 
 Packs may later become a distribution format for reusable installs or tool bundles, but they are deferred until the coordination model is proven.
 
@@ -107,6 +114,7 @@ Packs may later become a distribution format for reusable installs or tool bundl
 Files produced from canonical state:
 
 - scenario run reports;
+- VS Code workspace exports;
 - adapter outputs;
 - copied or linked skills in tool directories;
 - generated instruction files.

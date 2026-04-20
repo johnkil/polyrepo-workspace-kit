@@ -36,6 +36,10 @@ Implemented commands:
 - `wkit scenario show <scenario-id>`
 - `wkit scenario status <scenario-id>`
 - `wkit scenario run <scenario-id>`
+- `wkit vscode plan`
+- `wkit vscode diff`
+- `wkit vscode apply`
+- `wkit vscode open`
 - `wkit install show-targets <tool> [repo-id]`
 - `wkit install plan <tool> [repo-id]`
 - `wkit install diff <tool> [repo-id]`
@@ -63,6 +67,7 @@ Implemented packages:
 - `internal/orient`
 - `internal/scenario`
 - `internal/validate`
+- `internal/vscode`
 - `internal/workspace`
 
 ## Implementation Principles
@@ -263,6 +268,38 @@ Acceptance:
 - installer verifies `checksums.txt` before writing;
 - installer writes only into an absolute install directory and refuses symlink targets;
 - the default install path uses an existing writable `PATH` directory, so shell startup edits are not required when such a directory exists.
+
+## Milestone 9: VS Code Workspace Pilot
+
+Status: done
+
+Scope:
+
+- `wkit vscode plan`
+- `wkit vscode diff`
+- `wkit vscode apply`
+- `wkit vscode open`
+- generated local VS Code multi-root workspace at
+  `local/vscode/workspace.code-workspace`
+
+Acceptance:
+
+- generated output remains a local derived artifact and does not become
+  canonical state;
+- generated folders include the workspace root and every bound repo checkout;
+- generated tasks include `wkit` orientation/diagnostic tasks, pinned scenario
+  status/run tasks where locks exist, and repo entrypoint tasks from
+  `repos/<repo-id>/repo.yaml`;
+- repo entrypoint tasks use scoped `${workspaceFolder:<repo-id>}` `cwd`
+  variables and preserve repo-local executable truth;
+- missing bindings block rendering rather than silently producing an incomplete
+  workspace;
+- apply refuses to overwrite changed workspace files without `--force` or
+  `--backup`;
+- symlinked target files or parent paths that escape the workspace boundary are
+  blocked before diff or write behavior reads or mutates them;
+- `open` runs `code <workspace-file>` and only updates the generated file when
+  explicitly confirmed.
 
 ## Deferred
 

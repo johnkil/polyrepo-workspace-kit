@@ -9,6 +9,12 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 ### Added
 
 - Added a macOS/Linux `install.sh` for checksum-verified release archive installs without requiring Go.
+- Added VS Code multi-root workspace export commands: `wkit vscode plan`,
+  `wkit vscode diff`, `wkit vscode apply`, and `wkit vscode open`.
+- Added generated local VS Code workspace output at
+  `local/vscode/workspace.code-workspace` with bound repo folders, `wkit`
+  tasks, scenario tasks, and repo entrypoint tasks.
+- Added `docs/vscode.md` with VS Code export workflow and smoke-test guidance.
 
 ### Fixed
 

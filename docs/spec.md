@@ -1,8 +1,8 @@
 # Technical Specification
 ## Polyrepo Workspace Kit
 
-Version: 1.6
-Status: Public draft after final doc hardening pass
+Version: 1.7
+Status: Public draft with VS Code workspace pilot
 
 ## 1. Repository structure
 
@@ -30,6 +30,8 @@ workspace/
     reports/
       <scenario-id>/
         <run-id>.yaml
+    vscode/
+      workspace.code-workspace
   runtime/
   config/
   bin/
@@ -55,6 +57,7 @@ workspace/
 ### 2.3 Derived state
 
 - scenario execution reports under `local/reports/*`
+- VS Code multi-root workspace exports under `local/vscode/*`
 - portable outputs such as `AGENTS.md` and `.agents/skills/*`
 - tool-specific adapter outputs such as `CLAUDE.md`, `.claude/*`, `.github/*`, `.opencode/*`, or other adapter targets in the initial v0.x target surface
 
@@ -352,6 +355,33 @@ local/reports/<scenario-id>/<run-id>.txt
 
 The text report is a derived review aid. The YAML report remains the structured report artifact.
 
+### 4.8 `local/vscode/workspace.code-workspace`
+
+The VS Code workspace file is a local derived artifact generated from:
+
+- `coordination/workspace.yaml`;
+- `repos/*/repo.yaml`;
+- `local/bindings.yaml`;
+- `coordination/scenarios/*/manifest.lock.yaml` where present.
+
+It is intended to make a `wkit` workspace usable as a VS Code multi-root
+workspace without turning VS Code metadata into canonical state.
+
+The generated file should include:
+
+- one folder for the `wkit` workspace root;
+- one folder for each bound repo checkout, named by repo id;
+- workspace tasks for `wkit overview`, `wkit validate`, `wkit doctor`, and
+  `wkit status`;
+- workspace tasks for pinned scenario status/run commands where scenario locks
+  exist;
+- workspace tasks for repo entrypoints from `repos/<repo-id>/repo.yaml`;
+- conservative workspace settings that improve multi-root readability without
+  changing repository behavior.
+
+The VS Code export must not write `.vscode/*` files into bound repositories by
+default. It must remain disposable and regenerable from canonical `wkit` state.
+
 ## 5. Relation semantics
 
 Relations are directional.
@@ -515,6 +545,10 @@ It may additionally warn on:
 - `wkit scenario show <scenario-id>`
 - `wkit scenario status <scenario-id>`
 - `wkit scenario run <scenario-id>`
+- `wkit vscode plan`
+- `wkit vscode diff`
+- `wkit vscode apply`
+- `wkit vscode open`
 
 ### 9.2 Orientation and diagnostics commands
 
@@ -629,11 +663,70 @@ Allowed check statuses in v0.x:
 
 `blocked` means the check could not safely start because a prerequisite was not met, for example missing binding, missing command, or disallowed worktree state.
 
-## 11. Adapter contract
+## 11. VS Code workspace behavior
+
+### 11.1 Intent
+
+The VS Code export is an IDE orientation surface, not a new adapter truth model.
+It should make bound polyrepo checkouts easier to open, inspect, search, and run
+through declared entrypoints in VS Code.
+
+### 11.2 Generated target
+
+The initial v0.x target is:
+
+```text
+local/vscode/workspace.code-workspace
+```
+
+The fixed target path avoids using `workspace.id` as a filesystem component.
+
+### 11.3 Commands
+
+- `wkit vscode plan`
+- `wkit vscode diff`
+- `wkit vscode apply`
+- `wkit vscode open`
+
+`plan`, `diff`, and `apply` follow the same preview-before-write posture as
+install commands. `apply` requires `--yes` before writing and supports
+`--dry-run`, `--force`, and `--backup`.
+
+`open` runs `code <workspace-file>` for the generated file. If the workspace
+file is missing or stale, `open` must not write unless the user passes `--yes`.
+
+### 11.4 Task generation
+
+Generated VS Code tasks should use `process` tasks where possible, with command
+and arguments separated. Repo entrypoint tasks must preserve repo-local
+executable truth from `repo.yaml`; they must not invent centralized commands.
+
+Entrypoint commands with quoted arguments remain unsupported in v0.x. Users
+should move shell-sensitive workflows into repo-local wrapper scripts.
+
+Repo entrypoint task `cwd` values must be relative to the bound repo and must
+not escape the repo checkout. Generated tasks should use scoped
+`${workspaceFolder:<repo-id>}` variables for bound repo folders.
+
+### 11.5 Safety
+
+The VS Code export must:
+
+- require bindings for every declared repo before rendering a complete
+  workspace file;
+- keep generated output inside the `wkit` workspace root both lexically and
+  after resolving existing parent directories;
+- block symlinked target files or symlinked parent paths that escape the
+  workspace boundary;
+- refuse to overwrite changed files unless `--force` or `--backup` is explicit;
+- write backups with the same `<original-path>.bak.<UTC timestamp>` convention
+  used by install targets.
+
+## 12. Adapter contract
 
 Adapters are installation strategies for real tool discovery scopes.
 
-### 11.1 Supported adapters in v0.x
+### 12.1 Supported adapters in v0.x
 
 - `portable`
 - `codex`
@@ -641,13 +734,13 @@ Adapters are installation strategies for real tool discovery scopes.
 - `copilot`
 - `claude`
 
-### 11.2 Scope model
+### 12.2 Scope model
 
 - **Repo scope** is the default and primary installation mode.
 - **User scope** is explicit and may differ by tool.
 - User-scope installs should prefer **skills-first** behavior where global instruction paths are inconsistent across tools.
 
-### 11.3 Compatibility model
+### 12.3 Compatibility model
 
 Adapter behavior is a versioned compatibility assumption, not timeless truth.
 
@@ -663,9 +756,9 @@ Public docs must distinguish:
 - verification status (`docs-backed`, `empirically verified`, or `candidate / unverified`);
 - tool/version-specific caveats.
 
-## 12. Install safety contract
+## 13. Install safety contract
 
-### 12.1 Plan target record
+### 13.1 Plan target record
 
 Each plan target must include:
 
@@ -679,7 +772,7 @@ Each plan target must include:
 - optional `backup_path`
 - optional `notes`
 
-### 12.2 Plan statuses
+### 13.2 Plan statuses
 
 Allowed plan statuses in v0.x:
 
@@ -689,7 +782,7 @@ Allowed plan statuses in v0.x:
 - `overwrite` — target exists and will be replaced because overwrite is explicitly allowed.
 - `backup+overwrite` — target exists, a backup will be written, and then the target will be replaced.
 
-### 12.3 Ownership markers
+### 13.3 Ownership markers
 
 Where file format permits, adapter outputs should include a short marker indicating:
 
@@ -699,7 +792,7 @@ Where file format permits, adapter outputs should include a short marker indicat
 
 If file format does not naturally support comments, ownership may remain `unknown` and overwrite rules must stay conservative.
 
-### 12.4 Unmarked existing files
+### 13.4 Unmarked existing files
 
 If a target exists and content differs:
 
@@ -709,7 +802,7 @@ If a target exists and content differs:
 
 The implementation should not assume that an unmarked file is safe to replace.
 
-### 12.5 Backup naming
+### 13.5 Backup naming
 
 Backups should use:
 
@@ -719,7 +812,7 @@ If that backup path already exists, implementations must not overwrite it. They 
 
 Backup creation should stage content before finalizing the backup where possible. If backup creation fails after creating the final backup path, implementations should clean up that newly created path so a valid-looking partial backup artifact is not left behind.
 
-### 12.6 Install path containment
+### 13.6 Install path containment
 
 Installer planning, diffing, and applying are safety-sensitive because both source
 guidance and existing target files may be supplied by an untrusted workspace or
@@ -741,19 +834,19 @@ the intended boundary:
 Unsafe source or target paths should be reported as blocked plan targets with a
 short explanatory note where practical.
 
-### 12.7 Exit codes
+### 13.7 Exit codes
 
 Suggested v0.x exit codes:
 
 - `0` — success
 - `2` — validation, doctor, or argument error
-- `3` — blocked install targets
+- `3` — blocked install or VS Code workspace targets
 - `4` — scenario drift, missing binding, or blocked `scenario status` / `scenario run` prerequisite
 - `5` — command failure during scenario run
 
 If one scenario run contains both blocked/drift checks and command failures, command failure takes precedence for the process exit code.
 
-## 13. Proof-oriented invariants
+## 14. Proof-oriented invariants
 
 The following are invariants for the proof stage:
 

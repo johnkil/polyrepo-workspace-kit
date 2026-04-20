@@ -47,6 +47,7 @@ The proof stage assumes the following baseline already exists or is close enough
 - changes and scenarios;
 - portable rules and skills;
 - thin adapters;
+- local VS Code multi-root workspace export;
 - safe install UX.
 
 The plan is not primarily about adding more surfaces. It is about validating that the existing surfaces are useful.
@@ -121,6 +122,27 @@ Exit criteria:
 - compatibility matrix updated with probe dates, tool versions, target paths, and confidence levels;
 - candidate targets either move to empirically verified with evidence or stay explicitly unverified.
 
+### Workstream F — Pilot VS Code multi-repo ergonomics
+
+Goals:
+
+- validate that the generated `.code-workspace` file makes bound polyrepo
+  checkouts easier to open, search, inspect, and run;
+- confirm that VS Code tasks generated from repo entrypoints are discoverable
+  without turning `wkit` into a central command registry;
+- confirm that Source Control and search behavior are usable across the bound
+  repositories in a real workflow.
+
+Exit criteria:
+
+- at least one pilot user opens a generated VS Code workspace from an existing
+  `wkit` workspace;
+- the user successfully runs at least one `wkit` task and one repo entrypoint
+  task from VS Code;
+- the pilot records whether the generated workspace reduces setup friction or
+  wrong-repo exploration;
+- no `.vscode/*` files are required in bound repositories for the pilot.
+
 ## 5. Pilot matrix
 
 ### Pilot A — API / SDK / Docs
@@ -169,13 +191,15 @@ Success signal:
 
 ## 6. Measured workflows
 
-The proof stage should capture 3–5 concrete workflows:
+The proof stage should capture 3–6 candidate workflows, with 3–5 of them used
+for the MVP proof gate:
 
 1. baseline workflow without Polyrepo Workspace Kit;
 2. workspace setup;
 3. change creation;
 4. scenario pin and run;
 5. agent handoff using generated guidance.
+6. IDE orientation using the generated VS Code workspace.
 
 For each workflow, capture:
 
@@ -206,6 +230,7 @@ For each pilot or workflow, capture:
 - `scenario` lock;
 - scenario report;
 - generated adapter outputs where relevant;
+- generated VS Code workspace output where relevant;
 - participant feedback;
 - what stayed frozen vs what users asked to broaden.
 

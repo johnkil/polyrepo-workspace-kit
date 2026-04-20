@@ -13,6 +13,7 @@ import (
 	"github.com/johnkil/polyrepo-workspace-kit/internal/manifest"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/scenario"
+	vscodeworkspace "github.com/johnkil/polyrepo-workspace-kit/internal/vscode"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/workspace"
 )
 
@@ -159,6 +160,63 @@ func TestScenarioStatusCommandReturnsDriftExit(t *testing.T) {
 	}
 	if !strings.Contains(out, "[drift] app-web") {
 		t.Fatalf("unexpected drift scenario status output:\n%s", out)
+	}
+}
+
+func TestVSCodeCommandsPlanDiffAndApply(t *testing.T) {
+	root := seedCLIWorkspace(t)
+	app := filepath.Join(t.TempDir(), "app-web")
+	schema := filepath.Join(t.TempDir(), "shared-schema")
+	if err := os.MkdirAll(app, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(schema, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.SetBinding(root, "app-web", app); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.SetBinding(root, "shared-schema", schema); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := executeCLI("--workspace", root, "vscode", "plan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "target: vscode") || !strings.Contains(out, "[new] workspace") {
+		t.Fatalf("unexpected vscode plan output:\n%s", out)
+	}
+
+	out, err = executeCLI("--workspace", root, "vscode", "diff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "+  \"folders\": [") || !strings.Contains(out, "+        \"label\": \"app-web: test\"") {
+		t.Fatalf("unexpected vscode diff output:\n%s", out)
+	}
+
+	out, err = executeCLI("--workspace", root, "vscode", "apply", "--yes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetPath, err := vscodeworkspace.TargetPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(targetPath); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "written: "+targetPath) {
+		t.Fatalf("unexpected vscode apply output:\n%s", out)
+	}
+
+	out, err = executeCLI("--workspace", root, "vscode", "plan")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "[unchanged] workspace") {
+		t.Fatalf("expected unchanged vscode plan output:\n%s", out)
 	}
 }
 

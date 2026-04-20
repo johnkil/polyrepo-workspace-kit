@@ -72,6 +72,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newStatusCommand(&workspaceFlag))
 	root.AddCommand(newDoctorCommand(&workspaceFlag))
 	root.AddCommand(newInstallCommand(&workspaceFlag))
+	root.AddCommand(newVSCodeCommand(&workspaceFlag))
 	root.AddCommand(newValidateCommand(&workspaceFlag))
 	root.AddCommand(newVersionCommand())
 
