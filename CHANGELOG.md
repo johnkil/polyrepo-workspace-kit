@@ -6,6 +6,10 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
+### Fixed
+
+- Allowed custom release notes passed to GoReleaser to populate future draft GitHub Releases.
+
 ## v0.2.0 - 2026-04-20
 
 ### Added
