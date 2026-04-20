@@ -143,6 +143,18 @@ func TestWorkspaceStatusCanScopeToContext(t *testing.T) {
 	}
 }
 
+func TestWorkspaceStatusRejectsUnknownContextRepos(t *testing.T) {
+	root := seedWorkspace(t)
+	writeContexts(t, root, map[string]model.Context{
+		"broken": {Repos: []string{"typo-repo"}},
+	})
+
+	_, err := WorkspaceStatus(root, StatusOptions{ContextID: "broken"})
+	if err == nil || !strings.Contains(err.Error(), `context "broken" references unknown repo "typo-repo"`) {
+		t.Fatalf("expected unknown context repo error, got %v", err)
+	}
+}
+
 func TestScenarioStatusReportsDriftAndBlocked(t *testing.T) {
 	root := seedWorkspace(t)
 	checkout := initGitRepo(t, filepath.Join(t.TempDir(), "app-web"))

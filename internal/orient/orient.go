@@ -231,6 +231,16 @@ func statusRepoIDs(root string, contextID string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
+		doc, err := workspace.LoadWorkspace(root)
+		if err != nil {
+			return nil, err
+		}
+		repoIDs := workspace.RepoIDs(doc)
+		for _, repoID := range context.Repos {
+			if _, ok := repoIDs[repoID]; !ok {
+				return nil, fmt.Errorf("context %q references unknown repo %q", contextID, repoID)
+			}
+		}
 		return append([]string{}, context.Repos...), nil
 	}
 	doc, err := workspace.LoadWorkspace(root)
