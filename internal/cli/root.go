@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/install"
@@ -620,6 +621,9 @@ func printInstallPlan(cmd *cobra.Command, plan install.Plan) error {
 		line := fmt.Sprintf("- [%s] %s %s (source: %s, ownership: %s)", target.Status, target.Kind, target.Path, target.Source, target.Ownership)
 		if target.BackupPath != "" {
 			line += " backup: " + target.BackupPath
+		}
+		if len(target.Notes) > 0 {
+			line += " note: " + strings.Join(target.Notes, "; ")
 		}
 		if err := writeln(cmd, line); err != nil {
 			return err

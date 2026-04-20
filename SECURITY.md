@@ -29,6 +29,7 @@ Please pay special attention to:
 - path traversal and symlink escapes;
 - generated file overwrite behavior;
 - backup behavior;
+- installer source and target symlink containment;
 - scenario command execution boundaries;
 - validation of YAML manifests and report paths;
 - Git subprocess handling.
@@ -36,3 +37,5 @@ Please pay special attention to:
 ## Project Posture
 
 `wkit` is a local CLI. It does not run a daemon, host a service, load secrets, or execute scenario commands through a shell by default. Repo-local scripts are responsible for any shell features, environment setup, or secret loading they require.
+
+Generated guidance installs are derived file writes. Installer planning, diffing, and applying should treat symlinked sources, symlinked targets, and target parent directories that resolve outside their intended boundary as blocked rather than following them.

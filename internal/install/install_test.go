@@ -250,6 +250,252 @@ func TestAdapterApplyWritesOnlySpecTargets(t *testing.T) {
 	})
 }
 
+func TestRepoScopeAdaptersBlockSymlinkParentEscapes(t *testing.T) {
+	cases := []struct {
+		tool        string
+		linkName    string
+		targetRel   string
+		outsideRel  string
+		blockedKind string
+	}{
+		{
+			tool:        "portable",
+			linkName:    ".agents",
+			targetRel:   filepath.Join(".agents", "skills", "release-note", "SKILL.md"),
+			outsideRel:  filepath.Join("skills", "release-note", "SKILL.md"),
+			blockedKind: "skill",
+		},
+		{
+			tool:        "codex",
+			linkName:    ".agents",
+			targetRel:   filepath.Join(".agents", "skills", "release-note", "SKILL.md"),
+			outsideRel:  filepath.Join("skills", "release-note", "SKILL.md"),
+			blockedKind: "skill",
+		},
+		{
+			tool:        "opencode",
+			linkName:    ".agents",
+			targetRel:   filepath.Join(".agents", "skills", "release-note", "SKILL.md"),
+			outsideRel:  filepath.Join("skills", "release-note", "SKILL.md"),
+			blockedKind: "skill",
+		},
+		{
+			tool:        "copilot",
+			linkName:    ".github",
+			targetRel:   filepath.Join(".github", "copilot-instructions.md"),
+			outsideRel:  "copilot-instructions.md",
+			blockedKind: "instructions",
+		},
+		{
+			tool:        "claude",
+			linkName:    ".claude",
+			targetRel:   filepath.Join(".claude", "skills", "release-note", "SKILL.md"),
+			outsideRel:  filepath.Join("skills", "release-note", "SKILL.md"),
+			blockedKind: "skill",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.tool, func(t *testing.T) {
+			root, checkout := seedWorkspace(t)
+			outside := t.TempDir()
+			if err := os.Symlink(outside, filepath.Join(checkout, tc.linkName)); err != nil {
+				t.Fatal(err)
+			}
+
+			plan, err := install.BuildPlan(root, install.PlanOptions{
+				Tool:   tc.tool,
+				Scope:  install.ScopeRepo,
+				RepoID: "app-web",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := findTarget(t, plan, filepath.Join(checkout, tc.targetRel))
+			if target.Status != install.StatusBlocked || target.Kind != tc.blockedKind {
+				t.Fatalf("expected blocked %s target, got %#v", tc.blockedKind, target)
+			}
+			assertTargetNoteContains(t, target, "unsafe target path")
+
+			_, err = install.Apply(root, install.PlanOptions{
+				Tool:   tc.tool,
+				Scope:  install.ScopeRepo,
+				RepoID: "app-web",
+			})
+			if err == nil {
+				t.Fatal("expected apply to fail on unsafe symlink parent")
+			}
+			assertFileMissing(t, filepath.Join(outside, tc.outsideRel))
+		})
+	}
+}
+
+func TestInstallDiffDoesNotReadSymlinkedExistingTarget(t *testing.T) {
+	root, checkout := seedWorkspace(t)
+	secretPath := filepath.Join(t.TempDir(), "secret.txt")
+	if err := os.WriteFile(secretPath, []byte("do-not-leak\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	targetPath := filepath.Join(checkout, "AGENTS.md")
+	if err := os.Symlink(secretPath, targetPath); err != nil {
+		t.Fatal(err)
+	}
+
+	diff, err := install.BuildDiff(root, install.PlanOptions{
+		Tool:   "portable",
+		Scope:  install.ScopeRepo,
+		RepoID: "app-web",
+		Backup: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := findTarget(t, diff.Plan, targetPath)
+	if target.Status != install.StatusBlocked {
+		t.Fatalf("expected symlinked target to be blocked, got %#v", target)
+	}
+	assertTargetNoteContains(t, target, "symlink")
+	if joined := diffText(diff); strings.Contains(joined, "do-not-leak") {
+		t.Fatalf("diff leaked symlinked target content:\n%s", joined)
+	}
+
+	_, err = install.Apply(root, install.PlanOptions{
+		Tool:   "portable",
+		Scope:  install.ScopeRepo,
+		RepoID: "app-web",
+		Backup: true,
+	})
+	if err == nil {
+		t.Fatal("expected apply to fail on symlinked target")
+	}
+	data, err := os.ReadFile(secretPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "do-not-leak\n" {
+		t.Fatalf("secret target was changed: %q", string(data))
+	}
+}
+
+func TestInstallDiffDoesNotReadSymlinkedSkillSource(t *testing.T) {
+	root, checkout := seedWorkspace(t)
+	secretPath := filepath.Join(t.TempDir(), "secret-skill.md")
+	if err := os.WriteFile(secretPath, []byte("skill secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sourcePath := filepath.Join(root, "guidance", "skills", "release-note", "SKILL.md")
+	if err := os.Remove(sourcePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secretPath, sourcePath); err != nil {
+		t.Fatal(err)
+	}
+
+	diff, err := install.BuildDiff(root, install.PlanOptions{
+		Tool:   "portable",
+		Scope:  install.ScopeRepo,
+		RepoID: "app-web",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := findTarget(t, diff.Plan, filepath.Join(checkout, ".agents", "skills", "release-note", "SKILL.md"))
+	if target.Status != install.StatusBlocked {
+		t.Fatalf("expected symlinked source to be blocked, got %#v", target)
+	}
+	assertTargetNoteContains(t, target, "unsafe source path")
+	if joined := diffText(diff); strings.Contains(joined, "skill secret") {
+		t.Fatalf("diff leaked symlinked source content:\n%s", joined)
+	}
+}
+
+func TestRenderedRulesRejectSymlinkedRuleSource(t *testing.T) {
+	root, _ := seedWorkspace(t)
+	secretPath := filepath.Join(t.TempDir(), "secret-rule.md")
+	if err := os.WriteFile(secretPath, []byte("rule secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rulePath := filepath.Join(root, "guidance", "rules", "always-on.md")
+	if err := os.Remove(rulePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secretPath, rulePath); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := install.BuildPlan(root, install.PlanOptions{
+		Tool:   "portable",
+		Scope:  install.ScopeRepo,
+		RepoID: "app-web",
+	})
+	if err == nil {
+		t.Fatal("expected symlinked guidance rule to be rejected")
+	}
+	if strings.Contains(err.Error(), "rule secret") {
+		t.Fatalf("error leaked rule content: %v", err)
+	}
+}
+
+func TestInstallRejectsSymlinkedGuidanceSourceRoots(t *testing.T) {
+	t.Run("rules", func(t *testing.T) {
+		root, _ := seedWorkspace(t)
+		outside := t.TempDir()
+		if err := os.WriteFile(filepath.Join(outside, "always-on.md"), []byte("root rule secret\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		rulesRoot := filepath.Join(root, "guidance", "rules")
+		if err := os.RemoveAll(rulesRoot); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, rulesRoot); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := install.BuildPlan(root, install.PlanOptions{
+			Tool:   "portable",
+			Scope:  install.ScopeRepo,
+			RepoID: "app-web",
+		})
+		if err == nil {
+			t.Fatal("expected symlinked guidance rules root to be rejected")
+		}
+		if strings.Contains(err.Error(), "root rule secret") {
+			t.Fatalf("error leaked rule root content: %v", err)
+		}
+	})
+
+	t.Run("skills", func(t *testing.T) {
+		root, _ := seedWorkspace(t)
+		outside := filepath.Join(t.TempDir(), "skills")
+		outsideSkill := filepath.Join(outside, "release-note")
+		if err := os.MkdirAll(outsideSkill, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(outsideSkill, "SKILL.md"), []byte("root skill secret\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		skillsRoot := filepath.Join(root, "guidance", "skills")
+		if err := os.RemoveAll(skillsRoot); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, skillsRoot); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := install.BuildPlan(root, install.PlanOptions{
+			Tool:   "portable",
+			Scope:  install.ScopeRepo,
+			RepoID: "app-web",
+		})
+		if err == nil {
+			t.Fatal("expected symlinked guidance skills root to be rejected")
+		}
+		if strings.Contains(err.Error(), "root skill secret") {
+			t.Fatalf("error leaked skill root content: %v", err)
+		}
+	})
+}
+
 func TestPortableApplyBlocksWithoutForceOrBackup(t *testing.T) {
 	root, checkout := seedWorkspace(t)
 	target := filepath.Join(checkout, "AGENTS.md")
@@ -486,6 +732,16 @@ func assertToolTarget(t *testing.T, plan install.Plan, path string, tool string,
 	if target.Status != status {
 		t.Fatalf("target %s status: expected %s, got %s", path, status, target.Status)
 	}
+}
+
+func assertTargetNoteContains(t *testing.T, target install.Target, want string) {
+	t.Helper()
+	for _, note := range target.Notes {
+		if strings.Contains(note, want) {
+			return
+		}
+	}
+	t.Fatalf("expected target note containing %q, got %#v", want, target.Notes)
 }
 
 func findTarget(t *testing.T, plan install.Plan, path string) install.Target {

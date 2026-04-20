@@ -645,7 +645,7 @@ Allowed plan statuses in v0.x:
 
 - `new` — target path does not exist.
 - `unchanged` — target exists and content already matches.
-- `blocked` — target exists and would be overwritten, but overwrite is not allowed under current flags.
+- `blocked` — target exists and would be overwritten, overwrite is not allowed under current flags, or the target/source path is unsafe.
 - `overwrite` — target exists and will be replaced because overwrite is explicitly allowed.
 - `backup+overwrite` — target exists, a backup will be written, and then the target will be replaced.
 
@@ -679,7 +679,29 @@ If that backup path already exists, implementations must not overwrite it. They 
 
 Backup creation should stage content before finalizing the backup where possible. If backup creation fails after creating the final backup path, implementations should clean up that newly created path so a valid-looking partial backup artifact is not left behind.
 
-### 12.6 Exit codes
+### 12.6 Install path containment
+
+Installer planning, diffing, and applying are safety-sensitive because both source
+guidance and existing target files may be supplied by an untrusted workspace or
+checkout.
+
+Implementations must not follow symlinks in a way that reads or writes outside
+the intended boundary:
+
+- repo-scope targets must remain inside the bound repo checkout both lexically
+  and after resolving existing parent directories;
+- user-scope targets must remain inside the selected user root both lexically
+  and after resolving existing parent directories;
+- existing target files that are symlinks must be blocked before diff, backup,
+  or overwrite logic reads them;
+- guidance source files used for rules and skills must be regular files inside
+  their canonical `guidance/*` roots; symlinked source files must be rejected or
+  blocked before their contents are read.
+
+Unsafe source or target paths should be reported as blocked plan targets with a
+short explanatory note where practical.
+
+### 12.7 Exit codes
 
 Suggested v0.x exit codes:
 
