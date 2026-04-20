@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -97,8 +98,42 @@ func TestInspectReportsAheadBehindFromLocalRemoteTrackingRefs(t *testing.T) {
 	if !status.HasUpstream {
 		t.Fatalf("expected upstream, got %#v", status)
 	}
+	if !status.HasDivergence {
+		t.Fatalf("expected ahead/behind counts, got %#v", status)
+	}
 	if status.Ahead != 1 || status.Behind != 1 {
 		t.Fatalf("expected ahead=1 behind=1, got ahead=%d behind=%d", status.Ahead, status.Behind)
+	}
+}
+
+func TestInspectKeepsUpstreamButHidesCountsWhenDivergenceUnavailable(t *testing.T) {
+	repo := filepath.Join(t.TempDir(), "repo")
+	initGitRepo(t, repo)
+	branch := strings.TrimSpace(gitOutput(t, repo, "git", "branch", "--show-current"))
+	if branch == "" {
+		t.Fatal("expected current branch")
+	}
+	gitRun(t, repo, "git", "remote", "add", "origin", "https://example.invalid/repo.git")
+	gitRun(t, repo, "git", "config", "branch."+branch+".remote", "origin")
+	gitRun(t, repo, "git", "config", "branch."+branch+".merge", "refs/heads/main")
+
+	remoteRefs := filepath.Join(repo, ".git", "refs", "remotes", "origin")
+	if err := os.MkdirAll(remoteRefs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(remoteRefs, "main"), []byte("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := Inspect(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.HasUpstream || status.Upstream != "origin/main" {
+		t.Fatalf("expected upstream to remain visible, got %#v", status)
+	}
+	if status.HasDivergence {
+		t.Fatalf("expected ahead/behind counts to be unavailable, got %#v", status)
 	}
 }
 
@@ -150,4 +185,15 @@ func gitRun(t *testing.T, dir string, name string, args ...string) {
 	if err != nil {
 		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
 	}
+}
+
+func gitOutput(t *testing.T, dir string, name string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
+	}
+	return string(out)
 }

@@ -648,8 +648,8 @@ func printRepoStatus(cmd *cobra.Command, repo orient.RepoStatus) error {
 		intOrDash(repo.GitStatus == "ok", repo.DirtyFiles),
 		intOrDash(repo.GitStatus == "ok", repo.UntrackedFiles),
 		repo.Upstream,
-		intOrDash(repo.HasUpstream, repo.Ahead),
-		intOrDash(repo.HasUpstream, repo.Behind),
+		intOrDash(repo.HasDivergence, repo.Ahead),
+		intOrDash(repo.HasDivergence, repo.Behind),
 	)
 	if repo.Reason != "" {
 		line += " reason=" + repo.Reason

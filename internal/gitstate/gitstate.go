@@ -37,6 +37,7 @@ type CheckoutStatus struct {
 	Ahead          int
 	Behind         int
 	HasUpstream    bool
+	HasDivergence  bool
 }
 
 func Version() string {
@@ -117,6 +118,7 @@ func Inspect(repoPath string) (CheckoutStatus, error) {
 	}
 	status.Ahead = ahead
 	status.Behind = behind
+	status.HasDivergence = true
 	return status, nil
 }
 

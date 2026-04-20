@@ -59,6 +59,7 @@ type RepoStatus struct {
 	UntrackedFiles int
 	Upstream       string
 	HasUpstream    bool
+	HasDivergence  bool
 	Ahead          int
 	Behind         int
 	Reason         string
@@ -130,7 +131,7 @@ func WorkspaceInfo(root string) (Info, error) {
 	for _, repoID := range doc.Repos {
 		repoDoc, err := workspace.LoadRepo(root, repoID)
 		if err != nil {
-			continue
+			return Info{}, fmt.Errorf("load repo %q: %w", repoID, err)
 		}
 		repoKinds[repoDoc.Repo.Kind]++
 	}
@@ -292,6 +293,7 @@ func inspectRepo(bindings model.BindingsDocument, repoID string) RepoStatus {
 	status.HasUpstream = git.HasUpstream
 	if git.HasUpstream {
 		status.Upstream = git.Upstream
+		status.HasDivergence = git.HasDivergence
 		status.Ahead = git.Ahead
 		status.Behind = git.Behind
 	}

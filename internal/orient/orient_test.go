@@ -84,6 +84,18 @@ func TestWorkspaceInfoSummarizesWorkspace(t *testing.T) {
 	}
 }
 
+func TestWorkspaceInfoSurfacesRepoManifestLoadFailure(t *testing.T) {
+	root := seedWorkspace(t)
+	if err := os.Remove(filepath.Join(root, "repos", "shared-schema", "repo.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := WorkspaceInfo(root)
+	if err == nil || !strings.Contains(err.Error(), `load repo "shared-schema"`) {
+		t.Fatalf("expected repo manifest load error, got %v", err)
+	}
+}
+
 func TestWorkspaceStatusReportsBindingsAndGitState(t *testing.T) {
 	root := seedWorkspace(t)
 	checkout := initGitRepo(t, filepath.Join(t.TempDir(), "app-web"))
