@@ -351,22 +351,44 @@ func scanGradle(path string) (manifestInfo, error) {
 }
 
 func gradleDependency(line string) (string, string, bool) {
-	open := strings.Index(line, "(")
-	close := strings.LastIndex(line, ")")
-	if open <= 0 || close <= open {
+	conf := ""
+	value := ""
+	if open := strings.Index(line, "("); open > 0 {
+		candidate := strings.TrimSpace(line[:open])
+		if isGradleConfiguration(candidate) {
+			close := strings.LastIndex(line, ")")
+			if close <= open {
+				return "", "", false
+			}
+			conf = candidate
+			value = line[open+1 : close]
+		}
+	}
+	if conf == "" {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return "", "", false
+		}
+		conf = fields[0]
+		value = strings.TrimSpace(strings.TrimPrefix(line, conf))
+	}
+	if !isGradleConfiguration(conf) {
 		return "", "", false
 	}
-	conf := strings.TrimSpace(line[:open])
-	switch conf {
-	case "implementation", "api", "runtimeOnly", "compileOnly", "testImplementation", "testRuntimeOnly", "annotationProcessor", "kapt":
-	default:
-		return "", "", false
-	}
-	value := gradleDependencyValue(line[open+1 : close])
+	value = gradleDependencyValue(value)
 	if value == "" {
 		return "", "", false
 	}
 	return conf, value, true
+}
+
+func isGradleConfiguration(value string) bool {
+	switch value {
+	case "implementation", "api", "runtimeOnly", "compileOnly", "testImplementation", "testRuntimeOnly", "annotationProcessor", "kapt":
+		return true
+	default:
+		return false
+	}
 }
 
 func gradleDependencyValue(value string) string {

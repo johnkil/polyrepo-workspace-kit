@@ -111,6 +111,30 @@ func TestSuggestGradleProjectDependencyKindFollowsConfiguration(t *testing.T) {
 	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle.kts", "build-tools")
 }
 
+func TestSuggestGradleGroovyProjectDependencyKindFollowsConfiguration(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	tools := t.TempDir()
+	if _, err := workspace.RegisterRepo(root, "build-tools", "tooling"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.SetBinding(root, "build-tools", tools); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, app, "build.gradle", `dependencies {
+  implementation project(':shared-schema')
+  testImplementation project(':build-tools')
+}`)
+	writeFile(t, schema, "settings.gradle", `rootProject.name = 'shared-schema'`)
+	writeFile(t, tools, "settings.gradle", `rootProject.name = 'build-tools'`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle", "shared-schema")
+	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle", "build-tools")
+}
+
 func TestSuggestContextFilterAndMissingBinding(t *testing.T) {
 	root, app, schema := seedWorkspace(t)
 	if err := manifest.WriteYAML(filepath.Join(root, workspace.ContextsFile), model.ContextsDocument{
