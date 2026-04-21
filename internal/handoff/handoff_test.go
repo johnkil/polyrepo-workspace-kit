@@ -82,7 +82,7 @@ func seedHandoffWorkspace(t *testing.T) (string, string, string) {
 		t.Fatal(err)
 	}
 	entrypoint := repo.Entrypoints["test"]
-	entrypoint.Run = "bin/test"
+	entrypoint.Run = "go run ./testcmd.go"
 	entrypoint.TimeoutSeconds = 30
 	entrypoint.EnvProfile = "default"
 	repo.Entrypoints["test"] = entrypoint
@@ -109,13 +109,21 @@ func seedHandoffWorkspace(t *testing.T) (string, string, string) {
 
 func initGitRepo(t *testing.T, root string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(root, "bin"), 0o755); err != nil {
+	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("# app-web\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "bin", "test"), []byte("#!/usr/bin/env sh\nset -eu\necho ok\n"), 0o755); err != nil {
+	source := `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("ok")
+}
+`
+	if err := os.WriteFile(filepath.Join(root, "testcmd.go"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	run(t, root, "git", "init")

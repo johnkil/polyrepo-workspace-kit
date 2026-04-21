@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -288,7 +289,7 @@ func TestExecuteRootRecordsTelemetryWhenEnabled(t *testing.T) {
 	cmd.SetErr(&out)
 	cmd.SetArgs([]string{"--workspace", root, "info"})
 
-	code := executeRoot(cmd, record, time.Date(2026, 4, 21, 12, 0, 1, 0, time.UTC))
+	code := executeRoot(cmd, record, time.Now().Add(-time.Second))
 	if code != 0 {
 		t.Fatalf("expected exit code 0, got %d; output:\n%s", code, out.String())
 	}
@@ -296,10 +297,22 @@ func TestExecuteRootRecordsTelemetryWhenEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"command":"wkit info"`, `"exit_code":0`, `"--workspace"`, root} {
-		if !strings.Contains(string(data), want) {
-			t.Fatalf("expected %q in telemetry event:\n%s", want, string(data))
-		}
+	events := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(events) != 1 {
+		t.Fatalf("expected exactly one telemetry event, got %d:\n%s", len(events), string(data))
+	}
+	var event telemetry.Event
+	if err := json.Unmarshal([]byte(events[0]), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Command != "wkit info" || event.Workspace != root || event.ExitCode != 0 {
+		t.Fatalf("unexpected telemetry event: %#v", event)
+	}
+	if event.DurationMS < 0 {
+		t.Fatalf("duration should not be negative: %#v", event)
+	}
+	if !containsString(event.Args, "--workspace") || !containsString(event.Args, root) {
+		t.Fatalf("expected workspace flag in telemetry args: %#v", event.Args)
 	}
 }
 
@@ -484,4 +497,13 @@ func run(t *testing.T, dir string, name string, args ...string) {
 	if err != nil {
 		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
 	}
+}
+
+func containsString(items []string, value string) bool {
+	for _, item := range items {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }
