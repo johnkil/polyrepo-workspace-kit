@@ -37,7 +37,7 @@ func (e *ExitError) Error() string {
 }
 
 func Execute() int {
-	record := &cliRunRecord{}
+	record := &cliRunRecord{RawArgs: append([]string(nil), os.Args[1:]...)}
 	root := newRootCommandWithRecorder(record)
 	return executeRoot(root, record, time.Now())
 }
@@ -45,13 +45,14 @@ func Execute() int {
 type cliRunRecord struct {
 	Command       string
 	Args          []string
+	RawArgs       []string
 	WorkspaceFlag string
 }
 
 func executeRoot(root *cobra.Command, record *cliRunRecord, started time.Time) int {
 	executed, err := root.ExecuteC()
 	code := exitCode(err)
-	completeRunRecord(record, executed)
+	completeRunRecord(record, root, executed, err)
 	recordTelemetryEvent(record, code, time.Since(started), time.Now())
 	if err == nil {
 		return 0
@@ -62,13 +63,39 @@ func executeRoot(root *cobra.Command, record *cliRunRecord, started time.Time) i
 	return code
 }
 
-func completeRunRecord(record *cliRunRecord, cmd *cobra.Command) {
-	if record == nil || record.Command != "" || cmd == nil {
+func completeRunRecord(record *cliRunRecord, root *cobra.Command, cmd *cobra.Command, err error) {
+	if record == nil || record.Command != "" {
+		return
+	}
+	if shouldUseRootRunRecord(root, cmd, err, record.RawArgs) {
+		completeRootRunRecord(record, root)
+		return
+	}
+	if cmd == nil {
 		return
 	}
 	record.Command = cmd.CommandPath()
 	record.Args = captureArgs(cmd, cmd.Flags().Args())
 	record.WorkspaceFlag = captureWorkspaceFlag(cmd)
+}
+
+func shouldUseRootRunRecord(root *cobra.Command, cmd *cobra.Command, err error, rawArgs []string) bool {
+	if root == nil {
+		return false
+	}
+	if cmd == nil {
+		return true
+	}
+	return err != nil && cmd == root && len(rawArgs) > 0
+}
+
+func completeRootRunRecord(record *cliRunRecord, root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	record.Command = root.CommandPath()
+	record.Args = append([]string(nil), record.RawArgs...)
+	record.WorkspaceFlag = workspaceFlagFromArgs(record.RawArgs)
 }
 
 func exitCode(err error) int {
@@ -154,6 +181,25 @@ func captureWorkspaceFlag(cmd *cobra.Command) string {
 		return ""
 	}
 	return flag.Value.String()
+}
+
+func workspaceFlagFromArgs(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return ""
+		}
+		if arg == "--workspace" {
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+			return ""
+		}
+		if strings.HasPrefix(arg, "--workspace=") {
+			return strings.TrimPrefix(arg, "--workspace=")
+		}
+	}
+	return ""
 }
 
 func recordTelemetryEvent(record *cliRunRecord, code int, duration time.Duration, now time.Time) {
