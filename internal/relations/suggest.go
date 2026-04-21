@@ -329,24 +329,23 @@ func scanGradle(path string) (manifestInfo, error) {
 			}
 			continue
 		}
+		conf, value, ok := gradleDependency(line)
+		if ok {
+			kind := "build"
+			switch conf {
+			case "implementation", "api", "runtimeOnly", "compileOnly":
+				kind = "runtime"
+			}
+			out.Deps = append(out.Deps, dependency{Name: value, Kind: kind, Source: source})
+			continue
+		}
 		if strings.Contains(line, "project(") {
-			name := between(line, "project(", ")")
-			name = strings.TrimPrefix(trimQuoted(name), ":")
+			name := gradleProjectName(line)
 			if name != "" {
 				out.Deps = append(out.Deps, dependency{Name: name, Kind: "build", Source: source})
 			}
 			continue
 		}
-		conf, value, ok := gradleDependency(line)
-		if !ok {
-			continue
-		}
-		kind := "build"
-		switch conf {
-		case "implementation", "api", "runtimeOnly", "compileOnly":
-			kind = "runtime"
-		}
-		out.Deps = append(out.Deps, dependency{Name: value, Kind: kind, Source: source})
 	}
 	return out, nil
 }
@@ -363,11 +362,25 @@ func gradleDependency(line string) (string, string, bool) {
 	default:
 		return "", "", false
 	}
-	value := trimQuoted(line[open+1 : close])
+	value := gradleDependencyValue(line[open+1 : close])
 	if value == "" {
 		return "", "", false
 	}
 	return conf, value, true
+}
+
+func gradleDependencyValue(value string) string {
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, "project(") {
+		return gradleProjectName(value)
+	}
+	return trimQuoted(value)
+}
+
+func gradleProjectName(value string) string {
+	name := between(value, "project(", ")")
+	name = strings.TrimPrefix(trimQuoted(name), ":")
+	return name
 }
 
 func matchDependency(dep string, identities map[string]struct{}) (string, bool) {

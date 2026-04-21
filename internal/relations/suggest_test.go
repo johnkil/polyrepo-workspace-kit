@@ -87,6 +87,30 @@ name = "shared-schema"
 	assertSuggestion(t, report, "app-web", "build-tools", "build", "Cargo.toml dev-dependencies", "build-tools")
 }
 
+func TestSuggestGradleProjectDependencyKindFollowsConfiguration(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	tools := t.TempDir()
+	if _, err := workspace.RegisterRepo(root, "build-tools", "tooling"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.SetBinding(root, "build-tools", tools); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, app, "build.gradle.kts", `dependencies {
+  implementation(project(":shared-schema"))
+  testImplementation(project(":build-tools"))
+}`)
+	writeFile(t, schema, "settings.gradle.kts", `rootProject.name = "shared-schema"`)
+	writeFile(t, tools, "settings.gradle.kts", `rootProject.name = "build-tools"`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "shared-schema")
+	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle.kts", "build-tools")
+}
+
 func TestSuggestContextFilterAndMissingBinding(t *testing.T) {
 	root, app, schema := seedWorkspace(t)
 	if err := manifest.WriteYAML(filepath.Join(root, workspace.ContextsFile), model.ContextsDocument{
@@ -109,7 +133,7 @@ func TestSuggestContextFilterAndMissingBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertSuggestion(t, report, "app-web", "shared-schema", "build", "build.gradle.kts", "shared-schema")
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "shared-schema")
 	for _, skipped := range report.Skipped {
 		if skipped.Repo == "docs-site" {
 			t.Fatalf("context filter should not inspect docs-site, skipped=%#v", report.Skipped)
