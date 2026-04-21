@@ -331,12 +331,7 @@ func scanGradle(path string) (manifestInfo, error) {
 		}
 		conf, value, ok := gradleDependency(line)
 		if ok {
-			kind := "build"
-			switch conf {
-			case "implementation", "api", "runtimeOnly", "compileOnly":
-				kind = "runtime"
-			}
-			out.Deps = append(out.Deps, dependency{Name: value, Kind: kind, Source: source})
+			out.Deps = append(out.Deps, dependency{Name: value, Kind: gradleRelationKind(conf), Source: source})
 			continue
 		}
 	}
@@ -381,6 +376,15 @@ func isGradleConfiguration(value string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func gradleRelationKind(conf string) string {
+	switch conf {
+	case "implementation", "api", "runtimeOnly", "compileOnly":
+		return "runtime"
+	default:
+		return "build"
 	}
 }
 
