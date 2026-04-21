@@ -6,6 +6,10 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 
 ## Unreleased
 
+No changes yet.
+
+## v0.3.0 - 2026-04-21
+
 ### Added
 
 - Added a macOS/Linux `install.sh` for checksum-verified release archive installs without requiring Go.
@@ -37,6 +41,15 @@ The format is intentionally lightweight during v0.x. Public releases should keep
 ### Fixed
 
 - Allowed custom release notes passed to GoReleaser to populate future draft GitHub Releases.
+- Rejected invalid scaffold relation kinds and relation endpoints before writing
+  workspace state.
+- Classified Gradle `compileOnly` project dependencies as `build` relation
+  suggestions and ignored non-dependency Gradle `project(...)` references.
+- Recorded telemetry for Cobra argument-validation failures, unknown-command
+  failures, and the `telemetry disable` opt-out command when telemetry was
+  enabled at command start.
+- Made handoff scenario and report selection deterministic when same-second
+  scenario locks or reports are present.
 
 ## v0.2.0 - 2026-04-20
 

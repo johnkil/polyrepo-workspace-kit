@@ -35,7 +35,7 @@ already on `PATH`.
 Install a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh -s -- --version v0.2.0
+curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh -s -- --version v0.3.0
 ```
 
 Install into an explicit directory:
@@ -142,7 +142,7 @@ Tagged releases publish prebuilt archives for:
 Download the matching archive and `checksums.txt` from the GitHub Releases page:
 
 ```bash
-version=0.2.0
+version=0.3.0
 os=darwin
 arch=arm64
 base="https://github.com/johnkil/polyrepo-workspace-kit/releases/download/v${version}"
