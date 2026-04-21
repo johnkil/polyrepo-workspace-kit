@@ -398,6 +398,14 @@ func gradleDependencyValue(value string) string {
 
 func gradleProjectName(value string) string {
 	name := between(value, "project(", ")")
+	name = strings.TrimSpace(name)
+	for _, separator := range []string{"=", ":"} {
+		left, right, ok := strings.Cut(name, separator)
+		if ok && strings.TrimSpace(left) == "path" {
+			name = right
+			break
+		}
+	}
 	name = strings.TrimPrefix(trimQuoted(name), ":")
 	return name
 }
