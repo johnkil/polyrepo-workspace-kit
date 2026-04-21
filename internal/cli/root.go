@@ -49,8 +49,9 @@ type cliRunRecord struct {
 }
 
 func executeRoot(root *cobra.Command, record *cliRunRecord, started time.Time) int {
-	err := root.Execute()
+	executed, err := root.ExecuteC()
 	code := exitCode(err)
+	completeRunRecord(record, executed)
 	recordTelemetryEvent(record, code, time.Since(started), time.Now())
 	if err == nil {
 		return 0
@@ -59,6 +60,15 @@ func executeRoot(root *cobra.Command, record *cliRunRecord, started time.Time) i
 		_, _ = fmt.Fprintln(root.ErrOrStderr(), printErr)
 	}
 	return code
+}
+
+func completeRunRecord(record *cliRunRecord, cmd *cobra.Command) {
+	if record == nil || record.Command != "" || cmd == nil {
+		return
+	}
+	record.Command = cmd.CommandPath()
+	record.Args = captureArgs(cmd, cmd.Flags().Args())
+	record.WorkspaceFlag = captureWorkspaceFlag(cmd)
 }
 
 func exitCode(err error) int {
@@ -136,6 +146,14 @@ func captureArgs(cmd *cobra.Command, args []string) []string {
 	cmd.Flags().Visit(visit)
 	cmd.InheritedFlags().Visit(visit)
 	return out
+}
+
+func captureWorkspaceFlag(cmd *cobra.Command) string {
+	flag := cmd.Flag("workspace")
+	if flag == nil {
+		return ""
+	}
+	return flag.Value.String()
 }
 
 func recordTelemetryEvent(record *cliRunRecord, code int, duration time.Duration, now time.Time) {

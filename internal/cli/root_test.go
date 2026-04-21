@@ -335,6 +335,45 @@ func TestExecuteRootRecordsTelemetryWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestExecuteRootRecordsTelemetryForArgValidationFailure(t *testing.T) {
+	root := seedCLIWorkspace(t)
+	if _, err := telemetry.Enable(root, time.Date(2026, 4, 21, 12, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	record := &cliRunRecord{}
+	cmd := newRootCommandWithRecorder(record)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--workspace", root, "change", "show"})
+
+	code := executeRoot(cmd, record, time.Now().Add(-time.Second))
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d; output:\n%s", code, out.String())
+	}
+	data, err := telemetry.Export(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(events) != 1 {
+		t.Fatalf("expected exactly one telemetry event, got %d:\n%s", len(events), string(data))
+	}
+	var event telemetry.Event
+	if err := json.Unmarshal([]byte(events[0]), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Command != "wkit change show" || event.Workspace != root || event.ExitCode != 1 {
+		t.Fatalf("unexpected telemetry event: %#v", event)
+	}
+	if event.DurationMS < 0 {
+		t.Fatalf("duration should not be negative: %#v", event)
+	}
+	if !containsString(event.Args, "--workspace") || !containsString(event.Args, root) {
+		t.Fatalf("expected workspace flag in telemetry args: %#v", event.Args)
+	}
+}
+
 func TestScenarioStatusCommandReturnsDriftExit(t *testing.T) {
 	root := seedCLIWorkspace(t)
 	checkout := initCLIGitRepo(t, filepath.Join(t.TempDir(), "app-web"))
