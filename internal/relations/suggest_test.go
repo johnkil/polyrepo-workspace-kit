@@ -135,6 +135,20 @@ func TestSuggestGradleGroovyProjectDependencyKindFollowsConfiguration(t *testing
 	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle", "build-tools")
 }
 
+func TestSuggestGradleCompileOnlyProjectDependencyIsBuildKind(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	writeFile(t, app, "build.gradle", `dependencies {
+  compileOnly project(':shared-schema')
+}`)
+	writeFile(t, schema, "settings.gradle", `rootProject.name = 'shared-schema'`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSuggestion(t, report, "app-web", "shared-schema", "build", "build.gradle", "shared-schema")
+}
+
 func TestSuggestGradleIgnoresNonDependencyProjectReferences(t *testing.T) {
 	root, app, schema := seedWorkspace(t)
 	writeFile(t, app, "build.gradle", `def schemaProject = project(':shared-schema')`)

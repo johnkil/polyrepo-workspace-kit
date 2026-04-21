@@ -381,7 +381,7 @@ func isGradleConfiguration(value string) bool {
 
 func gradleRelationKind(conf string) string {
 	switch conf {
-	case "implementation", "api", "runtimeOnly", "compileOnly":
+	case "implementation", "api", "runtimeOnly":
 		return "runtime"
 	default:
 		return "build"
