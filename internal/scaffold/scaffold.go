@@ -86,6 +86,9 @@ func ParseRelationSpec(value string) (RelationSpec, error) {
 	if relation.Kind == "" {
 		relation.Kind = "contract"
 	}
+	if !model.IsRelationKind(relation.Kind) {
+		return RelationSpec{}, fmt.Errorf("relation %s -> %s uses unsupported kind %q", relation.From, relation.To, relation.Kind)
+	}
 	return relation, nil
 }
 
@@ -185,6 +188,9 @@ func addRelations(root string, specs []RelationSpec) ([]RelationSpec, error) {
 		spec.Kind = strings.TrimSpace(spec.Kind)
 		if spec.Kind == "" {
 			spec.Kind = "contract"
+		}
+		if !model.IsRelationKind(spec.Kind) {
+			return nil, fmt.Errorf("relation %s -> %s uses unsupported kind %q", spec.From, spec.To, spec.Kind)
 		}
 		if err := workspace.ValidateID("relation from repo id", spec.From); err != nil {
 			return nil, err

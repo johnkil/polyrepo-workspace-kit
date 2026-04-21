@@ -124,6 +124,25 @@ func TestInitCommandScaffoldsWorkspace(t *testing.T) {
 	}
 }
 
+func TestInitCommandRejectsUnsupportedRelationKindBeforeWriting(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "workspace")
+	app := t.TempDir()
+	schema := t.TempDir()
+
+	_, err := executeCLI(
+		"init", root,
+		"--repo", "app-web="+app,
+		"--repo", "shared-schema="+schema,
+		"--relation", "app-web:shared-schema:bogus",
+	)
+	if err == nil || !strings.Contains(err.Error(), `unsupported kind "bogus"`) {
+		t.Fatalf("expected unsupported relation kind error, got %v", err)
+	}
+	if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
+		t.Fatalf("init should reject invalid relation before writing workspace, stat err=%v", statErr)
+	}
+}
+
 func TestContextCommands(t *testing.T) {
 	root := seedCLIWorkspace(t)
 	writeCLIContexts(t, root, map[string]model.Context{

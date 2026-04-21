@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/scaffold"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/validate"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/workspace"
 )
 
@@ -79,6 +80,34 @@ func TestApplyRejectsUnknownRelationEndpoint(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsUnsupportedRelationKind(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "workspace")
+	_, err := scaffold.Apply(scaffold.Options{
+		Root: root,
+		Repos: []scaffold.RepoSpec{
+			{ID: "app-web", Path: t.TempDir(), Kind: "app"},
+			{ID: "shared-schema", Path: t.TempDir(), Kind: "contract"},
+		},
+		Relations: []scaffold.RelationSpec{
+			{From: "app-web", To: "shared-schema", Kind: "bogus"},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), `unsupported kind "bogus"`) {
+		t.Fatalf("expected unsupported relation kind error, got %v", err)
+	}
+
+	doc, loadErr := workspace.LoadWorkspace(root)
+	if loadErr != nil {
+		t.Fatal(loadErr)
+	}
+	if len(doc.Relations) != 0 {
+		t.Fatalf("unsupported relation kind should not be written: %#v", doc.Relations)
+	}
+	if report := validate.Workspace(root); !report.OK() {
+		t.Fatalf("failed scaffold should not leave invalid canonical state: %#v", report.Errors)
+	}
+}
+
 func TestApplyDoesNotOverwriteDifferentContext(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "workspace")
 	app := t.TempDir()
@@ -122,5 +151,8 @@ func TestParseSpecs(t *testing.T) {
 	}
 	if relation.From != "app-web" || relation.To != "shared-schema" || relation.Kind != "contract" {
 		t.Fatalf("unexpected relation: %#v", relation)
+	}
+	if _, err := scaffold.ParseRelationSpec("app-web:shared-schema:bogus"); err == nil || !strings.Contains(err.Error(), `unsupported kind "bogus"`) {
+		t.Fatalf("expected unsupported relation kind parse error, got %v", err)
 	}
 }
