@@ -192,6 +192,34 @@ func TestSuggestGradleNamedExternalDependencySyntax(t *testing.T) {
 	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "shared-schema")
 }
 
+func TestSuggestGradleOneLineDependencyBlocks(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	tools := t.TempDir()
+	if _, err := workspace.RegisterRepo(root, "build-tools", "tooling"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.SetBinding(root, "build-tools", tools); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, app, "build.gradle", `dependencies { implementation group: 'com.acme', name: 'shared-schema', version: '1.0.0' }
+dependencies { compileOnly project(':build-tools') }`)
+	writeFile(t, app, "build.gradle.kts", `dependencies { implementation("com.acme:shared-schema:1.0.0") }
+dependencies { testImplementation(project(path = ":build-tools", configuration = "default")) }`)
+	writeFile(t, schema, "settings.gradle", `rootProject.name = 'shared-schema'`)
+	writeFile(t, schema, "settings.gradle.kts", `rootProject.name = "shared-schema"`)
+	writeFile(t, tools, "settings.gradle", `rootProject.name = 'build-tools'`)
+	writeFile(t, tools, "settings.gradle.kts", `rootProject.name = "build-tools"`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle", "shared-schema")
+	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle", "build-tools")
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "com.acme:shared-schema:1.0.0")
+	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle.kts", "build-tools")
+}
+
 func TestSuggestGradleCompileOnlyProjectDependencyIsBuildKind(t *testing.T) {
 	root, app, schema := seedWorkspace(t)
 	writeFile(t, app, "build.gradle", `dependencies {

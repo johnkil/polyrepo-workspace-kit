@@ -329,13 +329,48 @@ func scanGradle(path string) (manifestInfo, error) {
 			}
 			continue
 		}
-		conf, value, ok := gradleDependency(line)
-		if ok {
-			out.Deps = append(out.Deps, dependency{Name: value, Kind: gradleRelationKind(conf), Source: source})
-			continue
+		for _, candidate := range gradleDependencyCandidates(line) {
+			conf, value, ok := gradleDependency(candidate)
+			if ok {
+				out.Deps = append(out.Deps, dependency{Name: value, Kind: gradleRelationKind(conf), Source: source})
+			}
 		}
 	}
 	return out, nil
+}
+
+func gradleDependencyCandidates(line string) []string {
+	line = strings.TrimSpace(line)
+	rest := strings.TrimSpace(strings.TrimPrefix(line, "dependencies"))
+	if rest != line && strings.HasPrefix(rest, "{") {
+		inside := strings.TrimSpace(strings.TrimPrefix(rest, "{"))
+		inside = trimGradleBlockEnd(inside)
+		if inside == "" {
+			return nil
+		}
+		return splitGradleStatements(inside)
+	}
+	return []string{line}
+}
+
+func trimGradleBlockEnd(value string) string {
+	value = strings.TrimSpace(value)
+	for strings.HasSuffix(value, "}") {
+		value = strings.TrimSpace(strings.TrimSuffix(value, "}"))
+	}
+	return value
+}
+
+func splitGradleStatements(value string) []string {
+	parts := strings.Split(value, ";")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func gradleDependency(line string) (string, string, bool) {
