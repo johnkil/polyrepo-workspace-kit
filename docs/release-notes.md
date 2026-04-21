@@ -1,9 +1,10 @@
 # Release Notes
 
-## Unreleased
+## v0.3.0 - 2026-04-21
 
-This development line adds a local VS Code multi-root workspace export and
-proof-hardening artifacts for scenario evidence.
+This release adds a local VS Code multi-root workspace export, a no-Go release
+archive installer, and proof-hardening artifacts for scenario evidence and
+pilot onboarding.
 
 ### Highlights
 
@@ -34,6 +35,9 @@ proof-hardening artifacts for scenario evidence.
   event logs.
 - Added `docs/pilot-kit.md` with the participant checklist, run sheet, evidence
   bundle template, and pilot pass/fail rubric.
+- Hardened scaffold validation, Gradle relation suggestions, telemetry coverage
+  for invalid invocations, and handoff selection when same-second artifacts are
+  present.
 
 ### Behavior Notes
 
@@ -58,47 +62,23 @@ proof-hardening artifacts for scenario evidence.
   canonical by itself.
 - `wkit telemetry enable` is disabled by default and writes only to
   `local/telemetry/*`; export is explicit and no network upload is performed.
+- `install.sh` downloads tagged release archives on macOS and Linux, verifies
+  `checksums.txt`, and installs into an existing writable `PATH` directory.
 
-## v0.2.0 - 2026-04-20
-
-This release adds the first read-only orientation layer and the first tagged
-release archive automation for `wkit`.
-
-## Highlights
-
-- Added workspace orientation commands:
-  `wkit context list`, `wkit context show`, `wkit info`, and
-  `wkit overview`.
-- Added local diagnostics commands:
-  `wkit status`, `wkit scenario status`, and `wkit doctor`.
-- Added release identity commands:
-  `wkit version` and `wkit --version`.
-- Added GoReleaser-based tagged release automation for draft GitHub Releases
-  with Linux/macOS/Windows archives, SHA-256 checksums, and checksum-based
-  artifact attestations.
-- Added GitHub project hygiene improvements: issue forms, PR template, status
-  badges, social preview, repository discoverability notes, and GitHub Pages
-  landing page.
-
-## Behavior Notes
-
-- `wkit status`, `wkit scenario status`, and `wkit doctor` inspect local truth
-  without fetching remotes, mutating checkouts, or running scenario checks.
-- Release archives embed `wkit` version, commit, build date, dirty state, and
-  builder metadata.
-- GitHub Releases created by the tag workflow are drafts by default so
-  maintainers can inspect artifacts before publishing.
-
-## Distribution Notes
+### Distribution Notes
 
 Supported install paths:
 
 ```bash
-go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
+curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh
 ```
 
-Tagged releases produced after this release automation was added can publish
-prebuilt archives and `checksums.txt` on the GitHub Releases page.
+```bash
+go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@v0.3.0
+```
+
+Tagged releases publish prebuilt archives and `checksums.txt` on the GitHub
+Releases page.
 
 Homebrew, signing, notarization, OS package managers, and tool-specific
 user-scope installs remain deferred.
