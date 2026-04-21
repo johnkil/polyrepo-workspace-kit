@@ -15,6 +15,24 @@ The format is intentionally lightweight during v0.x. Public releases should keep
   `local/vscode/workspace.code-workspace` with bound repo folders, `wkit`
   tasks, scenario tasks, and repo entrypoint tasks.
 - Added `docs/vscode.md` with VS Code export workflow and smoke-test guidance.
+- Added a failure/drift example workspace with committed scenario evidence for
+  pinned ref drift and command failure reporting.
+- Added ADR 0002 to fix the boundary between local scenario evidence and CI
+  platform behavior.
+- Added `wkit handoff <change-id>` for derived markdown handoff summaries from
+  change, context, scenario, and latest report data.
+- Added markdown scenario run reports alongside existing YAML and text reports.
+- Added `wkit demo [minimal|failure]` for self-contained first-run demos from
+  an installed binary.
+- Added scaffold flags to `wkit init` for explicit first-workspace repo
+  registration, bindings, relations, context creation, and initial change
+  creation.
+- Added `wkit relations suggest` for read-only dependency-manifest-based
+  relation candidates.
+- Added local opt-in pilot telemetry commands: `wkit telemetry enable`,
+  `disable`, `status`, and `export`.
+- Added `docs/pilot-kit.md` with a non-author pilot checklist, run sheet,
+  evidence bundle template, and pass/fail rubric.
 
 ### Fixed
 

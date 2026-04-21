@@ -1,0 +1,9 @@
+Scenario: schema-rollout
+Results: passed=0 failed=1 blocked=1 skipped=0
+
+- blocked: shared-schema:test (pinned ref drift: current HEAD 333333333333 does not match scenario lock 111111111111)
+  env_profile: default
+- failed: app-web:test (exit status 7)
+  stdout: logs/20260419T122000Z/app-web-test.stdout.txt
+  stderr: logs/20260419T122000Z/app-web-test.stderr.txt
+  env_profile: default

@@ -2,9 +2,8 @@
 
 ## Unreleased
 
-This development line adds a local VS Code multi-root workspace export for
-opening a bound `wkit` workspace in VS Code without committing editor metadata
-to bound repositories.
+This development line adds a local VS Code multi-root workspace export and
+proof-hardening artifacts for scenario evidence.
 
 ### Highlights
 
@@ -15,6 +14,26 @@ to bound repositories.
   `wkit` manifests.
 - Added `docs/vscode.md` with the workflow, safety behavior, and smoke-test
   checklist for the VS Code export.
+- Added a failure/drift example that shows scenario evidence for pinned ref
+  drift and a failed repo-local check.
+- Added ADR 0002 to keep `wkit scenario` bounded as local evidence rather than
+  CI platform ownership.
+- Added `wkit handoff <change-id>` to render a markdown handoff summary from a
+  change, its context, a scenario lock, and the latest local report when
+  present.
+- Added markdown scenario run reports alongside the existing structured YAML and
+  text summaries.
+- Added `wkit demo [minimal|failure]` for a self-contained first-run demo from
+  an installed binary.
+- Added scaffold flags to `wkit init` so a first real workspace can register
+  and bind repos, add explicit relations, create a context, and create an
+  initial change without hand-writing every manifest.
+- Added `wkit relations suggest` to inspect local dependency manifests and print
+  missing relation candidates without writing canonical graph state.
+- Added local opt-in pilot telemetry commands for workspace-local JSONL command
+  event logs.
+- Added `docs/pilot-kit.md` with the participant checklist, run sheet, evidence
+  bundle template, and pilot pass/fail rubric.
 
 ### Behavior Notes
 
@@ -24,6 +43,21 @@ to bound repositories.
   `wkit` does not invent central repo commands.
 - The export follows conservative overwrite behavior with `--force`,
   `--backup`, `--dry-run`, and `--yes`.
+- `wkit scenario` remains local and explicit; teams may call it from their own
+  CI scripts, but `wkit` does not own webhooks, daemons, hosted runners, or
+  remote run history.
+- YAML scenario reports remain the structured artifact. Text and markdown
+  reports are derived review aids.
+- `wkit demo` writes to a temporary directory and keeps that directory available
+  for inspection; the printed paths point to disposable demo state.
+- `wkit init` scaffold flags require explicit repo paths and relation
+  declarations; they do not discover repositories, infer graph truth, pin
+  scenarios, or run checks.
+- `wkit relations suggest` is read-only and suggestion-only. It does not clone,
+  fetch, run package managers, write manifests, or make discovered dependencies
+  canonical by itself.
+- `wkit telemetry enable` is disabled by default and writes only to
+  `local/telemetry/*`; export is explicit and no network upload is performed.
 
 ## v0.2.0 - 2026-04-20
 

@@ -30,6 +30,9 @@ workspace/
     reports/
       <scenario-id>/
         <run-id>.yaml
+    telemetry/
+      config.yaml
+      events.jsonl
     vscode/
       workspace.code-workspace
   runtime/
@@ -53,10 +56,12 @@ workspace/
 ### 2.2 Canonical machine-local state
 
 - `local/bindings.yaml`
+- `local/telemetry/config.yaml`
 
 ### 2.3 Derived state
 
 - scenario execution reports under `local/reports/*`
+- opt-in pilot telemetry events under `local/telemetry/events.jsonl`
 - VS Code multi-root workspace exports under `local/vscode/*`
 - portable outputs such as `AGENTS.md` and `.agents/skills/*`
 - tool-specific adapter outputs such as `CLAUDE.md`, `.claude/*`, `.github/*`, `.opencode/*`, or other adapter targets in the initial v0.x target surface
@@ -211,6 +216,25 @@ change:
     - app-web
 ```
 
+#### Change lifecycle in v0.x
+
+A `change` is a local declarative coordination file.
+
+In v0.x, `wkit` does not track whether the change is draft, active, merged,
+applied, closed, or archived. It also does not inspect GitHub, GitLab, other code
+hosts, issue trackers, or PR states to infer lifecycle status.
+
+The implemented lifecycle is intentionally small:
+
+- `wkit change new` creates a change manifest from a context;
+- `wkit change show` displays the manifest;
+- `wkit scenario pin --change <change-id>` uses the manifest to decide which
+  bound repositories to snapshot.
+
+Archiving, deleting, or retaining old change files is a human/team convention in
+v0.x. Adding lifecycle states or backend synchronization would be a new product
+decision and must pass the YAGNI gate.
+
 ### 4.5 `local/bindings.yaml`
 
 ```yaml
@@ -353,7 +377,13 @@ Implementations may also write a paired text summary report such as:
 local/reports/<scenario-id>/<run-id>.txt
 ```
 
-The text report is a derived review aid. The YAML report remains the structured report artifact.
+Implementations may also write a paired markdown reviewer report such as:
+
+```text
+local/reports/<scenario-id>/<run-id>.md
+```
+
+The text and markdown reports are derived review aids. The YAML report remains the structured report artifact.
 
 ### 4.8 `local/vscode/workspace.code-workspace`
 
@@ -417,6 +447,13 @@ In v0.x:
 - relation expansion should stay bounded and explicit;
 - no automatic full-graph traversal is implied;
 - rollout rules may refer to relation kind, but relations alone do not encode every rollout policy.
+
+The validator enforces the relation kind vocabulary. Runtime behavior comes from
+explicit contexts, changes, scenario locks, and coordination rules. A relation
+kind by itself must not imply hidden command execution, hidden rollout order, or
+automatic graph traversal. For example, `kind: contract` only affects rollout
+reasoning when a coordination rule such as `rollout-order` explicitly targets
+that relation kind.
 
 ## 6. Portable guidance model
 
@@ -527,11 +564,13 @@ It may additionally warn on:
 
 ### 9.1 Core commands
 
-- `wkit init <path>`
+- `wkit init <path> [--repo <id=path> ...]`
+- `wkit demo [minimal|failure]`
 - `wkit repo register <repo-id> --kind <kind>`
 - `wkit bind set <repo-id> <path>`
 - `wkit context list`
 - `wkit context show <context-id>`
+- `wkit relations suggest [--context <context-id>]`
 - `wkit info`
 - `wkit overview`
 - `wkit status [--context <context-id>]`
@@ -539,8 +578,13 @@ It may additionally warn on:
 - `wkit validate`
 - `wkit version`
 - `wkit --version`
+- `wkit telemetry enable`
+- `wkit telemetry disable`
+- `wkit telemetry status`
+- `wkit telemetry export`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
+- `wkit handoff <change-id> [--scenario <scenario-id>]`
 - `wkit scenario pin <scenario-id> --change <change-id>`
 - `wkit scenario show <scenario-id>`
 - `wkit scenario status <scenario-id>`
@@ -550,7 +594,112 @@ It may additionally warn on:
 - `wkit vscode apply`
 - `wkit vscode open`
 
-### 9.2 Orientation and diagnostics commands
+### 9.2 Init scaffold flags
+
+`wkit init <path>` creates the canonical workspace directory layout and seed
+manifest files.
+
+The command may also scaffold the first bounded workspace state with explicit
+flags:
+
+- `--repo <id=path>` registers a repo manifest and writes a local binding for an
+  existing checkout path. The flag may be repeated.
+- `--repo-kind <id=kind>` sets the kind for a repo declared with `--repo`.
+  Missing kinds default to `app`.
+- `--relation <from:to:kind>` appends an explicit relation between registered
+  repos. The flag may be repeated.
+- `--context <context-id>` writes a context containing the repos declared in
+  this init invocation. If repos are supplied and no context is named, the
+  scaffold context id is `default`.
+- `--change-title <title>` creates an initial local change from the scaffold
+  context.
+- `--change-kind <kind>` sets the change kind for `--change-title`; the default
+  is `contract`.
+
+Scaffold flags are convenience over existing canonical files. They must not
+discover repositories, infer relations, clone, fetch, pin scenarios, execute
+checks, or generate adapter outputs.
+
+### 9.3 Relation suggestion command
+
+`wkit relations suggest [--context <context-id>]` reads local bound checkouts and
+prints candidate missing `relations:` entries derived from known dependency
+manifests.
+
+The command may inspect:
+
+- `go.mod`;
+- `package.json`;
+- `Cargo.toml`;
+- Gradle settings and build files.
+
+The command is suggestion-only:
+
+- it must not write `coordination/workspace.yaml`;
+- it must not create canonical relations automatically;
+- it must not clone, fetch, install packages, run builds, execute scenario
+  checks, or invoke package managers;
+- it must not treat discovered dependencies as canonical truth until a human
+  accepts them by editing manifests or passing explicit scaffold flags.
+
+Suggested dependency relations should use the existing relation kind vocabulary.
+Package/runtime dependencies should generally map to `runtime`; dev, build, or
+tooling dependencies should generally map to `build`.
+
+`--context` limits inspected repos to the named context. Missing bindings are
+reported as skipped repos rather than silently ignored.
+
+### 9.4 Local telemetry commands
+
+`wkit telemetry enable` enables local opt-in command event logging for the
+current workspace. The opt-in marker is stored in
+`local/telemetry/config.yaml`.
+
+When enabled, CLI invocations that can resolve a workspace append JSONL events
+to `local/telemetry/events.jsonl`. Events include:
+
+- timestamp;
+- workspace path;
+- command path;
+- captured positional and flag arguments;
+- exit code;
+- command duration in milliseconds.
+
+Telemetry is local pilot instrumentation only:
+
+- it must not send data over the network;
+- it must not start a daemon or background process;
+- it must not record environment variables, command output, stdout/stderr logs,
+  file contents, git diffs, or secrets;
+- it must not be enabled by default;
+- it must not affect command behavior if event recording fails.
+
+`wkit telemetry disable` updates the local config so future commands stop
+writing events. Existing `events.jsonl` is left in place for explicit user
+review or deletion.
+
+`wkit telemetry status` prints local telemetry state and event count.
+
+`wkit telemetry export` prints the JSONL event file to stdout. Export is an
+explicit user action; `wkit` does not upload or publish telemetry.
+
+### 9.5 Demo command
+
+`wkit demo [minimal|failure]` runs a self-contained temporary workspace demo
+without requiring an existing workspace or source checkout.
+
+- `minimal` creates two demo repositories, pins and runs a passing
+  `schema-rollout` scenario, and prints the generated markdown report.
+- `failure` creates the same topology, then intentionally introduces pinned ref
+  drift and a failing repo-local check before printing the generated markdown
+  report.
+
+The demo command writes only to a temporary directory, prints the workspace and
+repo paths, and keeps them available for inspection. Demo output is disposable
+and must not become canonical state. In v0.x, the command depends on local Git
+and POSIX `sh` because the generated demo repositories use shell entrypoints.
+
+### 9.6 Orientation and diagnostics commands
 
 Orientation and diagnostics commands are read-only local inspection. They must not
 clone, fetch, pull, push, switch branches, commit, execute scenario checks, or
@@ -581,14 +730,14 @@ mutate repository checkouts.
   state, and builder. `wkit --version` prints a compact single-line variant.
   Neither form inspects a workspace, and both exit `0`.
 
-### 9.3 Install commands
+### 9.7 Install commands
 
 - `wkit install plan <tool> [repo-id]`
 - `wkit install diff <tool> [repo-id]`
 - `wkit install show-targets <tool> [repo-id]`
 - `wkit install apply <tool> [repo-id]`
 
-### 9.4 Install flags
+### 9.8 Install flags
 
 - `--scope repo|user`
 - `--user-root <path>`
@@ -597,6 +746,25 @@ mutate repository checkouts.
 - `--force`
 - `--backup`
 - tool-specific optional flags where needed
+
+### 9.9 Handoff command
+
+`wkit handoff <change-id>` renders a markdown summary for passing bounded
+workspace context to another human or agent.
+
+The handoff output is derived from existing state:
+
+- the `change` manifest;
+- its named `context`;
+- local bindings for affected repositories;
+- the newest scenario lock that references the change, unless `--scenario`
+  selects a specific lock;
+- the latest local scenario report for that scenario, when present.
+
+The command must not create new canonical state. It must not inspect PRs, issue
+trackers, code-host state, or remote CI state. If no scenario exists yet, it
+should still summarize the change and include the next local command to pin a
+scenario.
 
 ## 10. Scenario behavior
 
@@ -616,6 +784,8 @@ It is **not** intended to guarantee:
 - complete dependency replay;
 - machine-independent environment reproduction;
 - CI-level orchestration.
+
+The CI boundary is fixed in `docs/adr/0002-scenario-ci-boundary.md`.
 
 ### 10.2 `scenario pin`
 
@@ -645,7 +815,8 @@ The implementation must:
 - run the declared commands in the declared `cwd`;
 - apply timeout behavior where declared;
 - include `env_profile` in reports when present, without loading environment state automatically;
-- emit a text-first report suitable for review;
+- emit reviewable derived reports, including structured YAML and human-facing
+  text/markdown summaries where implemented;
 - record per-check status;
 - optionally record `stdout_path`, `stderr_path`, and artifact paths.
 

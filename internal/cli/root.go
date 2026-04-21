@@ -8,14 +8,20 @@ import (
 	"time"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/buildinfo"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/demo"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/handoff"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/install"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/orient"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/relations"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/scaffold"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/scenario"
+	"github.com/johnkil/polyrepo-workspace-kit/internal/telemetry"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/validate"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/workspace"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type ExitError struct {
@@ -31,25 +37,95 @@ func (e *ExitError) Error() string {
 }
 
 func Execute() int {
-	root := newRootCommand()
-	if err := root.Execute(); err != nil {
-		var exitErr *ExitError
-		if errors.As(err, &exitErr) {
-			if exitErr.Err != nil {
-				_, _ = fmt.Fprintln(root.ErrOrStderr(), exitErr.Err)
-			}
-			if exitErr.Code == 0 {
-				return 1
-			}
-			return exitErr.Code
-		}
-		_, _ = fmt.Fprintln(root.ErrOrStderr(), err)
-		return 1
+	record := &cliRunRecord{RawArgs: append([]string(nil), os.Args[1:]...)}
+	root := newRootCommandWithRecorder(record)
+	return executeRoot(root, record, time.Now())
+}
+
+type cliRunRecord struct {
+	Command                       string
+	Args                          []string
+	RawArgs                       []string
+	WorkspaceFlag                 string
+	RecordTelemetryEvenIfDisabled bool
+}
+
+func executeRoot(root *cobra.Command, record *cliRunRecord, started time.Time) int {
+	executed, err := root.ExecuteC()
+	code := exitCode(err)
+	completeRunRecord(record, root, executed, err)
+	recordTelemetryEvent(record, code, time.Since(started), time.Now())
+	if err == nil {
+		return 0
 	}
-	return 0
+	if printErr := printableError(err); printErr != nil {
+		_, _ = fmt.Fprintln(root.ErrOrStderr(), printErr)
+	}
+	return code
+}
+
+func completeRunRecord(record *cliRunRecord, root *cobra.Command, cmd *cobra.Command, err error) {
+	if record == nil || record.Command != "" {
+		return
+	}
+	if shouldUseRootRunRecord(root, cmd, err, record.RawArgs) {
+		completeRootRunRecord(record, root)
+		return
+	}
+	if cmd == nil {
+		return
+	}
+	record.Command = cmd.CommandPath()
+	record.Args = captureArgs(cmd, cmd.Flags().Args())
+	record.WorkspaceFlag = captureWorkspaceFlag(cmd)
+}
+
+func shouldUseRootRunRecord(root *cobra.Command, cmd *cobra.Command, err error, rawArgs []string) bool {
+	if root == nil {
+		return false
+	}
+	if cmd == nil {
+		return true
+	}
+	return err != nil && cmd == root && len(rawArgs) > 0
+}
+
+func completeRootRunRecord(record *cliRunRecord, root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	record.Command = root.CommandPath()
+	record.Args = append([]string(nil), record.RawArgs...)
+	record.WorkspaceFlag = workspaceFlagFromArgs(record.RawArgs)
+}
+
+func exitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	var exitErr *ExitError
+	if errors.As(err, &exitErr) {
+		if exitErr.Code == 0 {
+			return 1
+		}
+		return exitErr.Code
+	}
+	return 1
+}
+
+func printableError(err error) error {
+	var exitErr *ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.Err
+	}
+	return err
 }
 
 func newRootCommand() *cobra.Command {
+	return newRootCommandWithRecorder(nil)
+}
+
+func newRootCommandWithRecorder(record *cliRunRecord) *cobra.Command {
 	var workspaceFlag string
 
 	root := &cobra.Command{
@@ -61,22 +137,116 @@ func newRootCommand() *cobra.Command {
 	}
 	root.SetVersionTemplate("wkit {{ .Version }}\n")
 	root.PersistentFlags().StringVar(&workspaceFlag, "workspace", "", "workspace root")
+	if record != nil {
+		root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+			record.Command = cmd.CommandPath()
+			record.Args = captureArgs(cmd, args)
+			record.WorkspaceFlag = workspaceFlag
+			record.RecordTelemetryEvenIfDisabled = shouldRecordTelemetryEvenIfDisabled(cmd, workspaceFlag)
+		}
+	}
 
 	root.AddCommand(newInitCommand())
+	root.AddCommand(newDemoCommand())
 	root.AddCommand(newRepoCommand(&workspaceFlag))
 	root.AddCommand(newBindCommand(&workspaceFlag))
 	root.AddCommand(newContextCommand(&workspaceFlag))
+	root.AddCommand(newRelationsCommand(&workspaceFlag))
 	root.AddCommand(newChangeCommand(&workspaceFlag))
 	root.AddCommand(newScenarioCommand(&workspaceFlag))
 	root.AddCommand(newInfoCommand(&workspaceFlag))
 	root.AddCommand(newStatusCommand(&workspaceFlag))
 	root.AddCommand(newDoctorCommand(&workspaceFlag))
+	root.AddCommand(newHandoffCommand(&workspaceFlag))
 	root.AddCommand(newInstallCommand(&workspaceFlag))
+	root.AddCommand(newTelemetryCommand(&workspaceFlag))
 	root.AddCommand(newVSCodeCommand(&workspaceFlag))
 	root.AddCommand(newValidateCommand(&workspaceFlag))
 	root.AddCommand(newVersionCommand())
 
 	return root
+}
+
+func captureArgs(cmd *cobra.Command, args []string) []string {
+	out := append([]string(nil), args...)
+	visit := func(flag *pflag.Flag) {
+		out = append(out, "--"+flag.Name, flag.Value.String())
+	}
+	cmd.Flags().Visit(visit)
+	cmd.InheritedFlags().Visit(visit)
+	return out
+}
+
+func captureWorkspaceFlag(cmd *cobra.Command) string {
+	flag := cmd.Flag("workspace")
+	if flag == nil {
+		return ""
+	}
+	return flag.Value.String()
+}
+
+func workspaceFlagFromArgs(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return ""
+		}
+		if arg == "--workspace" {
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+			return ""
+		}
+		if strings.HasPrefix(arg, "--workspace=") {
+			return strings.TrimPrefix(arg, "--workspace=")
+		}
+	}
+	return ""
+}
+
+func shouldRecordTelemetryEvenIfDisabled(cmd *cobra.Command, workspaceFlag string) bool {
+	if cmd.CommandPath() != "wkit telemetry disable" {
+		return false
+	}
+	root, err := telemetryRoot(workspaceFlag)
+	if err != nil {
+		return false
+	}
+	status, err := telemetry.ReadStatus(root)
+	if err != nil {
+		return false
+	}
+	return status.Enabled
+}
+
+func recordTelemetryEvent(record *cliRunRecord, code int, duration time.Duration, now time.Time) {
+	if record == nil || record.Command == "" {
+		return
+	}
+	root, err := telemetryRoot(record.WorkspaceFlag)
+	if err != nil {
+		return
+	}
+	event := telemetry.Event{
+		Timestamp:  now.UTC().Format(time.RFC3339),
+		Workspace:  root,
+		Command:    record.Command,
+		Args:       record.Args,
+		ExitCode:   code,
+		DurationMS: duration.Milliseconds(),
+	}
+	if record.RecordTelemetryEvenIfDisabled {
+		_ = telemetry.Record(root, event)
+		return
+	}
+	_ = telemetry.RecordIfEnabled(root, event)
+}
+
+func telemetryRoot(workspaceFlag string) (string, error) {
+	if workspaceFlag != "" {
+		return workspace.FindRoot(workspaceFlag)
+	}
+	return workspace.FindRoot("")
 }
 
 func resolveWorkspaceRoot(flag *string) (string, error) {
@@ -101,22 +271,182 @@ func write(cmd *cobra.Command, value string) error {
 	return err
 }
 
-func newInitCommand() *cobra.Command {
+func newDemoCommand() *cobra.Command {
 	return &cobra.Command{
+		Use:   "demo [minimal|failure]",
+		Short: "Run a self-contained first-run demo",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			kind := demo.KindMinimal
+			if len(args) == 1 {
+				kind = args[0]
+			}
+			result, err := demo.Run(kind, time.Now())
+			if err != nil {
+				return err
+			}
+			if err := printDemoResult(cmd, result); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+}
+
+func printDemoResult(cmd *cobra.Command, result demo.Result) error {
+	if err := writef(cmd, "demo: %s\n", result.Kind); err != nil {
+		return err
+	}
+	if err := writef(cmd, "workspace: %s\n", result.WorkspaceRoot); err != nil {
+		return err
+	}
+	if err := writef(cmd, "repos: %s\n", result.ReposRoot); err != nil {
+		return err
+	}
+	if err := writef(cmd, "change: %s\n", result.ChangeID); err != nil {
+		return err
+	}
+	if err := writef(cmd, "scenario: %s\n", result.ScenarioID); err != nil {
+		return err
+	}
+	if err := writef(cmd, "report: %s\n", result.ReportPath); err != nil {
+		return err
+	}
+	if err := writef(cmd, "text-report: %s\n", result.TextReportPath); err != nil {
+		return err
+	}
+	if err := writef(cmd, "markdown-report: %s\n", result.MarkdownReportPath); err != nil {
+		return err
+	}
+	if err := writef(cmd, "handoff-command: wkit --workspace %s handoff %s\n", result.WorkspaceRoot, result.ChangeID); err != nil {
+		return err
+	}
+	if result.Kind == demo.KindFailure {
+		if err := writef(cmd, "expected: drift=%t blocked=%t failed=%t\n", result.Drift, result.Blocked, result.Failed); err != nil {
+			return err
+		}
+	}
+	if err := writeln(cmd, "\n--- markdown report ---"); err != nil {
+		return err
+	}
+	return write(cmd, result.MarkdownReport)
+}
+
+func newInitCommand() *cobra.Command {
+	var repoValues []string
+	var repoKindValues []string
+	var relationValues []string
+	var contextID string
+	var changeTitle string
+	var changeKind string
+
+	cmd := &cobra.Command{
 		Use:   "init <path>",
 		Short: "Initialize a workspace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := workspace.Init(args[0]); err != nil {
-				return err
-			}
-			root, err := workspace.FindRoot(args[0])
+			opts, err := initScaffoldOptions(args[0], repoValues, repoKindValues, relationValues, contextID, changeTitle, changeKind)
 			if err != nil {
 				return err
 			}
-			return writef(cmd, "initialized workspace at %s\n", root)
+			result, err := scaffold.Apply(opts)
+			if err != nil {
+				return err
+			}
+			return printInitResult(cmd, result)
 		},
 	}
+	cmd.Flags().StringArrayVar(&repoValues, "repo", nil, "register and bind a repo as id=path")
+	cmd.Flags().StringArrayVar(&repoKindValues, "repo-kind", nil, "set kind for a scaffold repo as id=kind")
+	cmd.Flags().StringArrayVar(&relationValues, "relation", nil, "add a relation as from:to:kind")
+	cmd.Flags().StringVar(&contextID, "context", "", "create a context for scaffold repos")
+	cmd.Flags().StringVar(&changeTitle, "change-title", "", "create an initial change from the scaffold context")
+	cmd.Flags().StringVar(&changeKind, "change-kind", "contract", "kind for --change-title")
+	return cmd
+}
+
+func initScaffoldOptions(root string, repoValues []string, repoKindValues []string, relationValues []string, contextID string, changeTitle string, changeKind string) (scaffold.Options, error) {
+	repoKinds := map[string]string{}
+	for _, value := range repoKindValues {
+		id, kind, err := scaffold.ParseRepoKindSpec(value)
+		if err != nil {
+			return scaffold.Options{}, err
+		}
+		if _, exists := repoKinds[id]; exists {
+			return scaffold.Options{}, fmt.Errorf("duplicate repo kind for %q", id)
+		}
+		repoKinds[id] = kind
+	}
+
+	repos := make([]scaffold.RepoSpec, 0, len(repoValues))
+	seenRepos := map[string]struct{}{}
+	for _, value := range repoValues {
+		repo, err := scaffold.ParseRepoSpec(value)
+		if err != nil {
+			return scaffold.Options{}, err
+		}
+		if _, exists := seenRepos[repo.ID]; exists {
+			return scaffold.Options{}, fmt.Errorf("duplicate repo %q", repo.ID)
+		}
+		seenRepos[repo.ID] = struct{}{}
+		if kind, ok := repoKinds[repo.ID]; ok {
+			repo.Kind = kind
+			delete(repoKinds, repo.ID)
+		}
+		repos = append(repos, repo)
+	}
+	for repoID := range repoKinds {
+		return scaffold.Options{}, fmt.Errorf("--repo-kind references unknown --repo %q", repoID)
+	}
+
+	relations := make([]scaffold.RelationSpec, 0, len(relationValues))
+	for _, value := range relationValues {
+		relation, err := scaffold.ParseRelationSpec(value)
+		if err != nil {
+			return scaffold.Options{}, err
+		}
+		relations = append(relations, relation)
+	}
+
+	return scaffold.Options{
+		Root:        root,
+		Repos:       repos,
+		Relations:   relations,
+		ContextID:   contextID,
+		ChangeTitle: changeTitle,
+		ChangeKind:  changeKind,
+		Now:         time.Now(),
+	}, nil
+}
+
+func printInitResult(cmd *cobra.Command, result scaffold.Result) error {
+	if err := writef(cmd, "initialized workspace at %s\n", result.Root); err != nil {
+		return err
+	}
+	for _, repo := range result.Repos {
+		if err := writef(cmd, "registered %s at %s\n", repo.ID, repo.ManifestPath); err != nil {
+			return err
+		}
+		if err := writef(cmd, "bound %s to %s\n", repo.ID, repo.BindingPath); err != nil {
+			return err
+		}
+	}
+	for _, relation := range result.Relations {
+		if err := writef(cmd, "relation: %s -> %s kind=%s\n", relation.From, relation.To, relation.Kind); err != nil {
+			return err
+		}
+	}
+	if result.ContextID != "" {
+		if err := writef(cmd, "context: %s\n", result.ContextID); err != nil {
+			return err
+		}
+	}
+	if result.ChangeID != "" {
+		if err := writef(cmd, "change: %s at %s\n", result.ChangeID, result.ChangePath); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func newRepoCommand(workspaceFlag *string) *cobra.Command {
@@ -246,6 +576,82 @@ func newContextShowCommand(workspaceFlag *string) *cobra.Command {
 	}
 }
 
+func newRelationsCommand(workspaceFlag *string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "relations",
+		Short: "Inspect workspace relation candidates",
+	}
+	cmd.AddCommand(newRelationsSuggestCommand(workspaceFlag))
+	return cmd
+}
+
+func newRelationsSuggestCommand(workspaceFlag *string) *cobra.Command {
+	var contextID string
+	cmd := &cobra.Command{
+		Use:   "suggest",
+		Short: "Suggest missing relations from local dependency manifests",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			report, err := relations.Suggest(root, relations.Options{ContextID: contextID})
+			if err != nil {
+				return err
+			}
+			return printRelationSuggestions(cmd, report)
+		},
+	}
+	cmd.Flags().StringVar(&contextID, "context", "", "limit suggestions to repos in a named context")
+	return cmd
+}
+
+func printRelationSuggestions(cmd *cobra.Command, report relations.Report) error {
+	if err := writeln(cmd, "suggestions:"); err != nil {
+		return err
+	}
+	if len(report.Suggestions) == 0 {
+		if err := writeln(cmd, "- none"); err != nil {
+			return err
+		}
+	} else {
+		for _, suggestion := range report.Suggestions {
+			if err := writef(
+				cmd,
+				"- %s -> %s kind=%s source=%q evidence=%q matched=%q\n",
+				suggestion.From,
+				suggestion.To,
+				suggestion.Kind,
+				suggestion.Source,
+				suggestion.Evidence,
+				suggestion.Matched,
+			); err != nil {
+				return err
+			}
+		}
+		if err := writeln(cmd, "candidate-flags:"); err != nil {
+			return err
+		}
+		for _, suggestion := range report.Suggestions {
+			if err := writef(cmd, "- --relation %s:%s:%s\n", suggestion.From, suggestion.To, suggestion.Kind); err != nil {
+				return err
+			}
+		}
+	}
+	if len(report.Skipped) > 0 {
+		if err := writeln(cmd, "skipped:"); err != nil {
+			return err
+		}
+		for _, skipped := range report.Skipped {
+			if err := writef(cmd, "- %s: %s\n", skipped.Repo, skipped.Reason); err != nil {
+				return err
+			}
+		}
+	}
+	return writeln(cmd, "note: suggestions are read-only; accept candidates by editing coordination/workspace.yaml or using explicit init --relation flags.")
+}
+
 func newChangeCommand(workspaceFlag *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "change",
@@ -307,6 +713,117 @@ func newChangeShowCommand(workspaceFlag *string) *cobra.Command {
 			return err
 		},
 	}
+}
+
+func newTelemetryCommand(workspaceFlag *string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "telemetry",
+		Short: "Manage local opt-in pilot telemetry",
+	}
+	cmd.AddCommand(newTelemetryEnableCommand(workspaceFlag))
+	cmd.AddCommand(newTelemetryDisableCommand(workspaceFlag))
+	cmd.AddCommand(newTelemetryStatusCommand(workspaceFlag))
+	cmd.AddCommand(newTelemetryExportCommand(workspaceFlag))
+	return cmd
+}
+
+func newTelemetryEnableCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "enable",
+		Short: "Enable local command event logging for this workspace",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			status, err := telemetry.Enable(root, time.Now())
+			if err != nil {
+				return err
+			}
+			if err := writeln(cmd, "telemetry: enabled"); err != nil {
+				return err
+			}
+			return printTelemetryStatus(cmd, status)
+		},
+	}
+}
+
+func newTelemetryDisableCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "disable",
+		Short: "Disable local command event logging for this workspace",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			status, err := telemetry.Disable(root, time.Now())
+			if err != nil {
+				return err
+			}
+			if err := writeln(cmd, "telemetry: disabled"); err != nil {
+				return err
+			}
+			return printTelemetryStatus(cmd, status)
+		},
+	}
+}
+
+func newTelemetryStatusCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show local telemetry status",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			status, err := telemetry.ReadStatus(root)
+			if err != nil {
+				return err
+			}
+			return printTelemetryStatus(cmd, status)
+		},
+	}
+}
+
+func newTelemetryExportCommand(workspaceFlag *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "export",
+		Short: "Print local telemetry events as JSONL",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			data, err := telemetry.Export(root)
+			if err != nil {
+				return err
+			}
+			if len(data) == 0 {
+				return nil
+			}
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
+		},
+	}
+}
+
+func printTelemetryStatus(cmd *cobra.Command, status telemetry.Status) error {
+	if err := writef(cmd, "enabled: %t\n", status.Enabled); err != nil {
+		return err
+	}
+	if err := writef(cmd, "config: %s\n", status.ConfigPath); err != nil {
+		return err
+	}
+	if err := writef(cmd, "events: %s\n", status.EventsPath); err != nil {
+		return err
+	}
+	return writef(cmd, "event_count: %d\n", status.EventCount)
 }
 
 func newValidateCommand(workspaceFlag *string) *cobra.Command {
@@ -472,6 +989,9 @@ func newScenarioRunCommand(workspaceFlag *string) *cobra.Command {
 				return err
 			}
 			if err := writef(cmd, "text-report: %s\n", result.TextReportPath); err != nil {
+				return err
+			}
+			if err := writef(cmd, "markdown-report: %s\n", result.MarkdownReportPath); err != nil {
 				return err
 			}
 			return scenarioExitError(result)
@@ -715,6 +1235,28 @@ func scenarioExitError(result scenario.RunResult) error {
 		return &ExitError{Code: 4}
 	}
 	return nil
+}
+
+func newHandoffCommand(workspaceFlag *string) *cobra.Command {
+	var scenarioID string
+	cmd := &cobra.Command{
+		Use:   "handoff <change-id>",
+		Short: "Render a markdown handoff summary for a change",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := resolveWorkspaceRoot(workspaceFlag)
+			if err != nil {
+				return err
+			}
+			out, err := handoff.Markdown(root, args[0], handoff.Options{ScenarioID: scenarioID})
+			if err != nil {
+				return err
+			}
+			return write(cmd, out)
+		},
+	}
+	cmd.Flags().StringVar(&scenarioID, "scenario", "", "scenario id to include")
+	return cmd
 }
 
 func newInstallCommand(workspaceFlag *string) *cobra.Command {

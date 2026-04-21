@@ -1,0 +1,2 @@
+app-web contract check failed: payload field customer_id is missing
+hint: regenerate the client after reconciling shared-schema drift

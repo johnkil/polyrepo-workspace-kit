@@ -52,6 +52,30 @@ The proof stage assumes the following baseline already exists or is close enough
 
 The plan is not primarily about adding more surfaces. It is about validating that the existing surfaces are useful.
 
+## 3.1 Immediate proof-hardening sequence
+
+The next work should make value visible, not broaden the model.
+
+Implement the following in order unless pilot evidence changes the priority:
+
+1. done: add a committed failure/drift scenario example, including structured
+   YAML, text summary, and referenced stdout/stderr logs;
+2. done: add `wkit handoff` as a derived markdown/text artifact from existing
+   `change`, `context`, `scenario`, and latest report data;
+3. done: add an ADR that fixes the boundary between local scenario evidence and
+   CI platforms;
+4. done: improve first-run ergonomics with a demo runner, without adding
+   canonical entities;
+5. done: add reviewer-friendly scenario output suitable for PR descriptions or
+   chat;
+6. done: add scaffolded `wkit init` flags for explicit first-workspace setup
+   without discovery;
+7. done: add `relations suggest` as a suggestion-only helper that
+   never makes discovered graph data canonical by itself.
+
+The first two items are the main proof of the core workflow without relying on
+adapter installs.
+
 ## 4. Workstreams
 
 ### Workstream A — Freeze the baseline
@@ -191,14 +215,14 @@ Success signal:
 
 ## 6. Measured workflows
 
-The proof stage should capture 3–6 candidate workflows, with 3–5 of them used
-for the MVP proof gate:
+The proof stage should capture 6 candidate workflows, with 3 required for the
+MVP proof gate and 3 treated as stretch evidence:
 
 1. baseline workflow without Polyrepo Workspace Kit;
 2. workspace setup;
 3. change creation;
 4. scenario pin and run;
-5. agent handoff using generated guidance.
+5. agent handoff using generated guidance or `wkit handoff`.
 6. IDE orientation using the generated VS Code workspace.
 
 For each workflow, capture:
@@ -220,6 +244,15 @@ Track a small proof-oriented set:
 - scenario drift frequency;
 - onboarding completion without maintainer help.
 
+For the first pilot round, collect these through a structured pilot run sheet,
+timestamps, CLI output, committed/local evidence artifacts, and optional local
+command telemetry.
+
+`wkit telemetry enable` is the only supported telemetry mode in v0.x. It writes
+JSONL command events under `local/telemetry/*`, never sends data over the
+network, and is disabled by default. Pilot users must explicitly opt in and
+export the log themselves.
+
 ## 8. Evidence artifacts
 
 For each pilot or workflow, capture:
@@ -233,6 +266,9 @@ For each pilot or workflow, capture:
 - generated VS Code workspace output where relevant;
 - participant feedback;
 - what stayed frozen vs what users asked to broaden.
+
+Use `docs/pilot-kit.md` as the run sheet, participant checklist, evidence bundle
+template, and pass/fail rubric for non-author pilots.
 
 ## 9. Stop conditions
 
@@ -248,7 +284,7 @@ Stop adding new core nouns if any of the following are true:
 The MVP should be called proven only if all of the following are true:
 
 - 2 independent pilots completed;
-- 3–5 measured workflows captured;
+- 3 measured workflows captured, with all 6 candidate workflows as stretch evidence;
 - 1 cold-start onboarding succeeds;
 - 1 compatibility pass completed and published for **each non-portable tool adapter in v0.x scope**, plus **1 portable output smoke test** for `AGENTS.md` and `.agents/skills/*`;
 - at least 1 non-author pilot participant reports that keeping the manifests current is worth the coordination savings for repeated workflows;
