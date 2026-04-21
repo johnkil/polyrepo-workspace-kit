@@ -2,7 +2,7 @@
 ## Polyrepo Workspace Kit
 
 Status: Working engineering plan
-Last updated: 2026-04-20
+Last updated: 2026-04-21
 
 ## Purpose
 
@@ -19,19 +19,26 @@ The first Go implementation slice exists and is tested.
 
 Implemented commands:
 
-- `wkit init <path>`
+- `wkit init <path> [--repo <id=path> ...]`
+- `wkit demo [minimal|failure]`
 - `wkit repo register <repo-id> --kind <kind>`
 - `wkit bind set <repo-id> <path>`
 - `wkit context list`
 - `wkit context show <context-id>`
+- `wkit relations suggest [--context <context-id>]`
 - `wkit info`
 - `wkit overview`
 - `wkit status [--context <context-id>]`
 - `wkit doctor`
 - `wkit version`
 - `wkit --version`
+- `wkit telemetry enable`
+- `wkit telemetry disable`
+- `wkit telemetry status`
+- `wkit telemetry export`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
+- `wkit handoff <change-id>`
 - `wkit scenario pin <scenario-id> --change <change-id>`
 - `wkit scenario show <scenario-id>`
 - `wkit scenario status <scenario-id>`
@@ -59,13 +66,18 @@ Implemented packages:
 - `cmd/wkit`
 - `internal/buildinfo`
 - `internal/cli`
+- `internal/demo`
 - `internal/fsutil`
 - `internal/gitstate`
+- `internal/handoff`
 - `internal/install`
 - `internal/manifest`
 - `internal/model`
 - `internal/orient`
+- `internal/relations`
+- `internal/scaffold`
 - `internal/scenario`
+- `internal/telemetry`
 - `internal/validate`
 - `internal/vscode`
 - `internal/workspace`
@@ -190,7 +202,7 @@ Acceptance:
 - a new user can run a local example without author help;
 - README contains truthful install/development instructions;
 - release artifacts do not imply unproven adapter compatibility.
-- CI runs Go tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, builds the CLI, and smoke-tests the minimal example.
+- CI runs Go tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, builds the CLI, and smoke-tests the minimal and failure/drift examples.
 
 Current packaging posture:
 
@@ -207,7 +219,7 @@ Current packaging posture:
 - public binary release automation is configured for tagged draft GitHub Releases;
 - GoReleaser builds Linux, macOS, and Windows archives for amd64 and arm64, plus checksums and build metadata;
 - `install.sh` downloads tagged release archives, verifies `checksums.txt`, and installs into an existing `PATH` directory without requiring Go;
-- `.github/workflows/test.yml` validates formatting, module tidiness, vet, lint, tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, build, and the minimal example without publishing artifacts.
+- `.github/workflows/test.yml` validates formatting, module tidiness, vet, lint, tests, race tests, coverage, fuzz smoke checks, vulnerability scanning, Windows test/build coverage, build, and the minimal and failure/drift examples without publishing artifacts.
 - `.github/dependabot.yml` keeps Go module and GitHub Actions updates visible on a weekly cadence.
 
 ## Milestone 6: Orientation and Diagnostics
@@ -300,6 +312,74 @@ Acceptance:
   blocked before diff or write behavior reads or mutates them;
 - `open` runs `code <workspace-file>` and only updates the generated file when
   explicitly confirmed.
+
+## Milestone 10: Proof Hardening Artifacts
+
+Status: in progress
+
+Scope:
+
+- committed failure/drift example artifacts that show why scenario evidence is
+  useful beyond the happy path;
+- spec text for `change` lifecycle boundaries;
+- ADR for the scenario/CI boundary;
+- `wkit handoff` command as a derived artifact, not a new canonical entity;
+- reviewer-friendly markdown scenario reports;
+- `wkit demo` first-run workflow that creates a temporary self-contained
+  workspace without requiring a source checkout;
+- scaffolded init flags for first real workspaces without hand-writing every
+  manifest.
+
+Acceptance:
+
+- example artifacts include at least one drift-blocked check and one command
+  failure with referenced stderr logs;
+- example artifacts are decoded by tests so documentation cannot silently drift
+  away from runtime report structs;
+- `docs/spec.md` explicitly says that v0.x `change` state is local and
+  declarative, with no PR/backend lifecycle tracking;
+- the CI boundary ADR states that `wkit` does not own webhooks, daemons, remote
+  schedulers, or hosted run history;
+- `wkit handoff` remains a report/export command derived from existing
+  `change`, `context`, `scenario`, and report data.
+- scenario runs write a markdown report suitable for PR descriptions or chat,
+  while YAML remains the structured report artifact.
+- `wkit demo` can show both a passing scenario and failure/drift evidence from
+  an installed binary.
+- `wkit init` can register and bind repos, add explicit relations, create a
+  context, and create an initial change from explicit flags without discovery or
+  scenario execution.
+- `wkit relations suggest` can inspect local dependency manifests and print
+  missing relation candidates without writing canonical state.
+
+## Milestone 11: Pilot Instrumentation
+
+Status: done
+
+Scope:
+
+- local opt-in command event logging for pilot runs;
+- telemetry config under `local/telemetry/config.yaml`;
+- JSONL events under `local/telemetry/events.jsonl`;
+- explicit status and export commands.
+
+Acceptance:
+
+- telemetry is disabled by default;
+- enabling telemetry is a workspace-local action;
+- recorded events include command path, captured args, exit code, timestamp, and
+  duration;
+- telemetry does not send data over the network, run a daemon, collect command
+  output, or change command behavior when recording fails;
+- export is explicit and prints the local JSONL event file.
+
+### Proof Hardening Backlog
+
+Implement in this order unless pilot evidence changes the priority:
+
+1. done: failure/drift demo artifacts;
+2. done: thin scaffolded init path;
+3. done: `relations suggest` as an explicit suggestion-only workflow.
 
 ## Deferred
 

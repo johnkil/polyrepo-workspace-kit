@@ -63,11 +63,43 @@ go test ./...
 ```
 
 `make tools` installs the local Go developer tools used by `make check`, including the pinned `golangci-lint` version.
-`make check` runs formatting, module tidiness, vet, lint, unit tests, race tests, vulnerability scanning, build, and the minimal example.
+`make check` runs formatting, module tidiness, vet, lint, unit tests, race tests, vulnerability scanning, build, the minimal example, and the failure/drift example.
 `make coverage` writes `coverage.out` and prints per-function coverage.
 `make fuzz` runs a short fuzz pass for packages that define `Fuzz*` targets; override the duration with `FUZZTIME=30s`.
 `make release-tools` installs the pinned GoReleaser version used by local release checks.
 `make release-check` validates `.goreleaser.yaml`.
+
+After installing or building `wkit`, run `wkit demo` or `wkit demo failure` to
+create a temporary self-contained workspace and print the generated scenario
+markdown report.
+For a real workspace, use scaffold flags to avoid hand-writing the first set of
+manifests:
+
+```bash
+wkit init ./workspace \
+  --repo app-web=../app-web \
+  --repo shared-schema=../shared-schema \
+  --repo-kind shared-schema=contract \
+  --relation app-web:shared-schema:contract \
+  --context schema-rollout \
+  --change-title "Payload field rollout"
+```
+
+Then inspect dependency manifests for relation candidates without writing the
+canonical graph:
+
+```bash
+wkit --workspace ./workspace relations suggest
+```
+
+For pilot runs, optionally enable local command event logging. This writes only
+inside the workspace under `local/telemetry/*` and exports only when you ask:
+
+```bash
+wkit --workspace ./workspace telemetry enable
+wkit --workspace ./workspace telemetry export
+```
+
 `make release-snapshot` builds local, unpublished release artifacts under `dist/`.
 
 Run the example workspace:

@@ -16,13 +16,14 @@
 
 Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, generated VS Code multi-root workspaces, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
 
-This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, scenario pin/status/run, VS Code multi-root workspace export, portable install, repo-scope tool adapters, validation, and version reporting. Tool-specific user-scope installs, Homebrew packaging, and signed/notarized binaries remain planned.
+This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, suggestion-only relation discovery, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, markdown handoff summaries, scenario pin/status/run, VS Code multi-root workspace export, local opt-in pilot telemetry, portable install, repo-scope tool adapters, validation, and version reporting. Tool-specific user-scope installs, Homebrew packaging, and signed/notarized binaries remain planned.
 
 Use it when you need to:
 
 - describe a local multi-repo workspace explicitly;
 - coordinate contract changes, rollout order, or shared-schema work across repositories;
 - pin a reviewable cross-repo validation snapshot before handoff;
+- render a markdown handoff summary from a change, scenario lock, and latest report;
 - run repo-local checks through declared entrypoints without centralizing arbitrary commands;
 - generate repo-scope coding-agent guidance for Codex, OpenCode, GitHub Copilot, Claude, or portable `AGENTS.md` consumers.
 
@@ -60,10 +61,42 @@ make check
 go run ./cmd/wkit --help
 ```
 
+Run a self-contained first-run demo from any installed `wkit` binary:
+
+```bash
+wkit demo
+wkit demo failure
+```
+
+Scaffold a first real workspace without hand-writing every manifest:
+
+```bash
+wkit init ./workspace \
+  --repo app-web=../app-web \
+  --repo shared-schema=../shared-schema \
+  --repo-kind shared-schema=contract \
+  --relation app-web:shared-schema:contract \
+  --context schema-rollout \
+  --change-title "Payload field rollout"
+```
+
+Ask `wkit` for dependency-manifest-based relation candidates without writing
+canonical graph state:
+
+```bash
+wkit --workspace ./workspace relations suggest
+```
+
 Run the minimal polyrepo workspace demo:
 
 ```bash
 make demo
+```
+
+Run the failure/drift scenario evidence demo:
+
+```bash
+make failure-demo
 ```
 
 Build a local `wkit` binary:
@@ -231,7 +264,7 @@ It does not claim:
 
 Fields such as `env_profile` and `env_requirements` are descriptive metadata in v0.x. They do not imply automatic environment loading, secret loading, shell activation, or toolchain management.
 
-Scenario runs write derived evidence under `local/reports/*`, including a structured YAML report and a text summary for quick review.
+Scenario runs write derived evidence under `local/reports/*`, including a structured YAML report, a text summary for quick terminal review, and a markdown summary suitable for PR descriptions or chat handoff.
 
 ## CLI Contract
 
@@ -263,11 +296,13 @@ make demo
 Implemented commands:
 
 ```bash
-wkit init <path>
+wkit init <path> [--repo <id=path> ...] [--relation <from:to:kind> ...]
+wkit demo [minimal|failure]
 wkit repo register <repo-id> --kind <kind>
 wkit bind set <repo-id> <path>
 wkit context list
 wkit context show <context-id>
+wkit relations suggest [--context <context-id>]
 wkit info
 wkit overview
 wkit status [--context <context-id>]
@@ -275,8 +310,13 @@ wkit doctor
 wkit validate
 wkit version
 wkit --version
+wkit telemetry enable
+wkit telemetry disable
+wkit telemetry status
+wkit telemetry export
 wkit change new <context> --title <title>
 wkit change show <change-id>
+wkit handoff <change-id> [--scenario <scenario-id>]
 wkit scenario pin <scenario-id> --change <change-id>
 wkit scenario show <scenario-id>
 wkit scenario status <scenario-id>
@@ -324,7 +364,7 @@ Install safety is part of the product contract:
 The project should be called MVP-proven only when:
 
 - 2 independent pilots are completed;
-- 3-5 measured workflows are captured;
+- 3 measured workflows are captured, with all 6 candidate workflows as stretch evidence;
 - 1 cold-start onboarding succeeds;
 - 1 compatibility pass is completed for each non-portable tool adapter;
 - 1 portable output smoke test is completed for `AGENTS.md` and `.agents/skills/*`;
@@ -346,6 +386,7 @@ Core docs:
 - [Release and Versioning](docs/release.md)
 - [Release Notes](docs/release-notes.md)
 - [ADR 0001: CLI Tech Stack](docs/adr/0001-tech-stack.md)
+- [ADR 0002: Scenario Is Not CI](docs/adr/0002-scenario-ci-boundary.md)
 
 Research base:
 
@@ -363,6 +404,8 @@ Examples:
 
 - [Minimal Workspace Example](examples/minimal-workspace/README.md)
 - [Minimal Scenario Artifact Snapshot](examples/minimal-workspace/artifacts/README.md)
+- [Failure Workspace Example](examples/failure-workspace/README.md)
+- [Failure Scenario Artifact Snapshot](examples/failure-workspace/artifacts/README.md)
 
 Community and project operations:
 

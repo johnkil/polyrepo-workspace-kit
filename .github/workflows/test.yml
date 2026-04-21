@@ -65,6 +65,9 @@ jobs:
       - name: Run minimal example
         run: WKIT_BIN="$PWD/bin/wkit" sh examples/minimal-workspace/run-demo.sh
 
+      - name: Run failure example
+        run: WKIT_BIN="$PWD/bin/wkit" sh examples/failure-workspace/run-demo.sh
+
   race-test:
     name: Go race detector
     runs-on: ubuntu-latest
