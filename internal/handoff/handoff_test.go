@@ -48,6 +48,42 @@ func TestMarkdownIncludesChangeScenarioAndLatestReport(t *testing.T) {
 	}
 }
 
+func TestMarkdownUsesLatestSameSecondReport(t *testing.T) {
+	root, _, changeID := seedHandoffWorkspace(t)
+	if _, err := scenario.Pin(root, "app-flow", changeID, time.Date(2026, 4, 19, 12, 5, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	runTime := time.Date(2026, 4, 19, 12, 10, 0, 0, time.UTC)
+	first, err := scenario.Run(root, "app-flow", runTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := scenario.Run(root, "app-flow", runTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(first.ReportPath) != "20260419T121000Z.yaml" {
+		t.Fatalf("unexpected first report path: %s", first.ReportPath)
+	}
+	if filepath.Base(second.ReportPath) != "20260419T121000Z.001.yaml" {
+		t.Fatalf("unexpected second report path: %s", second.ReportPath)
+	}
+
+	out, err := handoff.Markdown(root, changeID, handoff.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"latest report: `local/reports/app-flow/20260419T121000Z.001.yaml`",
+		"latest text report: `local/reports/app-flow/20260419T121000Z.001.txt`",
+		"latest markdown report: `local/reports/app-flow/20260419T121000Z.001.md`",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected %q in handoff output:\n%s", want, out)
+		}
+	}
+}
+
 func TestMarkdownWithoutScenarioStillSummarizesChange(t *testing.T) {
 	root, _, changeID := seedHandoffWorkspace(t)
 	out, err := handoff.Markdown(root, changeID, handoff.Options{})

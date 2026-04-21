@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/manifest"
@@ -217,7 +218,9 @@ func loadLatestReport(root string, scenarioID string) (*latestReport, error) {
 	if len(paths) == 0 {
 		return nil, nil
 	}
-	sort.Strings(paths)
+	sort.Slice(paths, func(i, j int) bool {
+		return reportPathLess(paths[i], paths[j])
+	})
 	path := paths[len(paths)-1]
 	var report model.ScenarioReportDocument
 	if err := manifest.LoadYAML(path, &report); err != nil {
@@ -233,6 +236,40 @@ func loadLatestReport(root string, scenarioID string) (*latestReport, error) {
 		out.MarkdownPath = markdownPath
 	}
 	return out, nil
+}
+
+type reportRunKey struct {
+	stamp string
+	index int
+	name  string
+}
+
+func reportPathLess(left string, right string) bool {
+	leftKey := parseReportRunKey(left)
+	rightKey := parseReportRunKey(right)
+	if leftKey.stamp != rightKey.stamp {
+		return leftKey.stamp < rightKey.stamp
+	}
+	if leftKey.index != rightKey.index {
+		return leftKey.index < rightKey.index
+	}
+	return leftKey.name < rightKey.name
+}
+
+func parseReportRunKey(path string) reportRunKey {
+	name := strings.TrimSuffix(filepath.Base(path), ".yaml")
+	key := reportRunKey{stamp: name, name: name}
+	stamp, suffix, ok := strings.Cut(name, ".")
+	if !ok {
+		return key
+	}
+	index, err := strconv.Atoi(suffix)
+	if err != nil {
+		return key
+	}
+	key.stamp = stamp
+	key.index = index
+	return key
 }
 
 func exists(path string) bool {
