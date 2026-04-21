@@ -33,12 +33,22 @@ func TestPinAndRunScenario(t *testing.T) {
 	if _, err := os.Stat(result.TextReportPath); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := os.Stat(result.MarkdownReportPath); err != nil {
+		t.Fatal(err)
+	}
 	text, err := os.ReadFile(result.TextReportPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(text), "Scenario: app-flow") || !strings.Contains(string(text), "passed=1") {
 		t.Fatalf("unexpected text report:\n%s", string(text))
+	}
+	markdown, err := os.ReadFile(result.MarkdownReportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(markdown), "# Scenario Report: app-flow") || !strings.Contains(string(markdown), "| `app-web:test` | `passed` |") {
+		t.Fatalf("unexpected markdown report:\n%s", string(markdown))
 	}
 }
 
@@ -61,10 +71,19 @@ func TestScenarioRunAvoidsSameSecondReportCollision(t *testing.T) {
 	if first.TextReportPath == second.TextReportPath {
 		t.Fatalf("expected distinct text report paths, got %s", first.TextReportPath)
 	}
+	if first.MarkdownReportPath == second.MarkdownReportPath {
+		t.Fatalf("expected distinct markdown report paths, got %s", first.MarkdownReportPath)
+	}
 	if _, err := os.Stat(first.ReportPath); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(second.ReportPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(first.MarkdownReportPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(second.MarkdownReportPath); err != nil {
 		t.Fatal(err)
 	}
 	if len(first.Outcomes) != 1 || len(second.Outcomes) != 1 {
@@ -238,6 +257,13 @@ func main() {
 	}
 	if !strings.Contains(string(text), "failed=1") || !strings.Contains(string(text), "stderr:") {
 		t.Fatalf("unexpected failure text report:\n%s", string(text))
+	}
+	markdown, err := os.ReadFile(result.MarkdownReportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(markdown), "## Diagnostics") || !strings.Contains(string(markdown), "nope") {
+		t.Fatalf("unexpected failure markdown report:\n%s", string(markdown))
 	}
 }
 

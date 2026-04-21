@@ -20,14 +20,6 @@ func (r Report) OK() bool {
 	return len(r.Errors) == 0
 }
 
-var allowedRelationKinds = map[string]struct{}{
-	"runtime":  {},
-	"build":    {},
-	"contract": {},
-	"release":  {},
-	"docs":     {},
-}
-
 var allowedRuleKinds = map[string]struct{}{
 	"rollout-order": {},
 }
@@ -162,7 +154,7 @@ func validateRelations(doc model.WorkspaceDocument, repoIDs map[string]struct{},
 		if _, ok := repoIDs[relation.To]; !ok {
 			report.Errors = append(report.Errors, fmt.Sprintf("relation target %q is not declared in workspace.repos", relation.To))
 		}
-		if _, ok := allowedRelationKinds[relation.Kind]; !ok {
+		if !model.IsRelationKind(relation.Kind) {
 			report.Errors = append(report.Errors, fmt.Sprintf("relation %s -> %s uses unsupported kind %q", relation.From, relation.To, relation.Kind))
 		}
 	}
@@ -230,7 +222,7 @@ func validateRule(expectedID string, rule model.Rule, repoIDs map[string]struct{
 		report.Errors = append(report.Errors, fmt.Sprintf("coordination/rules/%s.yaml: unsupported rule kind %q", expectedID, rule.Kind))
 	}
 	if rule.AppliesTo.RelationKind != "" {
-		if _, ok := allowedRelationKinds[rule.AppliesTo.RelationKind]; !ok {
+		if !model.IsRelationKind(rule.AppliesTo.RelationKind) {
 			report.Errors = append(report.Errors, fmt.Sprintf("coordination/rules/%s.yaml: unsupported applies_to.relation_kind %q", expectedID, rule.AppliesTo.RelationKind))
 		}
 	}

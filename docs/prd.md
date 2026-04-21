@@ -113,6 +113,10 @@ A user wants to plan, diff, confirm, force, or back up tool-specific writes rath
 
 A user wants to pass a change and its affected repositories to another person or agent without re-explaining the workspace from scratch.
 
+The v0.x CLI supports this through `wkit handoff`, which renders a derived
+markdown summary from an existing change, context, scenario lock, and latest
+local report when present.
+
 ## 8. Product goals
 
 ### Goal A — Stay a coordination layer
@@ -167,6 +171,7 @@ The project is explicitly not trying to be:
 - repo registration and bindings;
 - relations and contexts;
 - live change objects;
+- derived handoff summaries;
 - pinned scenario manifests and reviewable reports;
 - scenario execution through repo-local entrypoints;
 - canonical rules and skills;
@@ -191,9 +196,13 @@ The project is explicitly not trying to be:
 The product must:
 
 - initialize a canonical local workspace layout;
+- scaffold first-workspace manifests from explicit repo, relation, context, and
+  change inputs without auto-discovery;
 - register repositories and their kinds;
 - maintain local checkout bindings;
 - support directional relations with defined semantics;
+- suggest relation candidates from local dependency manifests without making
+  discovered graph data canonical;
 - support bounded contexts for cross-repo lookup;
 - support live cross-repo change objects;
 - pin scenarios to current repository state and derived checks;
@@ -271,6 +280,10 @@ The project should track a small number of proof-oriented metrics:
 - broad-search episodes during a bounded workflow;
 - install overwrite/conflict rate;
 - onboarding completion without maintainer help.
+
+The v0.x instrumentation path is local and opt-in: `wkit telemetry enable`
+writes command event JSONL under `local/telemetry/*` for pilot export. It is
+disabled by default and does not upload data.
 
 ## 15. YAGNI gate
 

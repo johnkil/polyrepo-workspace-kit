@@ -1,8 +1,8 @@
 # Technical Specification
 ## Polyrepo Workspace Kit
 
-Version: 1.6
-Status: Public draft after final doc hardening pass
+Version: 1.7
+Status: Public draft with VS Code workspace pilot
 
 ## 1. Repository structure
 
@@ -30,6 +30,11 @@ workspace/
     reports/
       <scenario-id>/
         <run-id>.yaml
+    telemetry/
+      config.yaml
+      events.jsonl
+    vscode/
+      workspace.code-workspace
   runtime/
   config/
   bin/
@@ -51,10 +56,13 @@ workspace/
 ### 2.2 Canonical machine-local state
 
 - `local/bindings.yaml`
+- `local/telemetry/config.yaml`
 
 ### 2.3 Derived state
 
 - scenario execution reports under `local/reports/*`
+- opt-in pilot telemetry events under `local/telemetry/events.jsonl`
+- VS Code multi-root workspace exports under `local/vscode/*`
 - portable outputs such as `AGENTS.md` and `.agents/skills/*`
 - tool-specific adapter outputs such as `CLAUDE.md`, `.claude/*`, `.github/*`, `.opencode/*`, or other adapter targets in the initial v0.x target surface
 
@@ -208,6 +216,25 @@ change:
     - app-web
 ```
 
+#### Change lifecycle in v0.x
+
+A `change` is a local declarative coordination file.
+
+In v0.x, `wkit` does not track whether the change is draft, active, merged,
+applied, closed, or archived. It also does not inspect GitHub, GitLab, other code
+hosts, issue trackers, or PR states to infer lifecycle status.
+
+The implemented lifecycle is intentionally small:
+
+- `wkit change new` creates a change manifest from a context;
+- `wkit change show` displays the manifest;
+- `wkit scenario pin --change <change-id>` uses the manifest to decide which
+  bound repositories to snapshot.
+
+Archiving, deleting, or retaining old change files is a human/team convention in
+v0.x. Adding lifecycle states or backend synchronization would be a new product
+decision and must pass the YAGNI gate.
+
 ### 4.5 `local/bindings.yaml`
 
 ```yaml
@@ -350,7 +377,40 @@ Implementations may also write a paired text summary report such as:
 local/reports/<scenario-id>/<run-id>.txt
 ```
 
-The text report is a derived review aid. The YAML report remains the structured report artifact.
+Implementations may also write a paired markdown reviewer report such as:
+
+```text
+local/reports/<scenario-id>/<run-id>.md
+```
+
+The text and markdown reports are derived review aids. The YAML report remains the structured report artifact.
+
+### 4.8 `local/vscode/workspace.code-workspace`
+
+The VS Code workspace file is a local derived artifact generated from:
+
+- `coordination/workspace.yaml`;
+- `repos/*/repo.yaml`;
+- `local/bindings.yaml`;
+- `coordination/scenarios/*/manifest.lock.yaml` where present.
+
+It is intended to make a `wkit` workspace usable as a VS Code multi-root
+workspace without turning VS Code metadata into canonical state.
+
+The generated file should include:
+
+- one folder for the `wkit` workspace root;
+- one folder for each bound repo checkout, named by repo id;
+- workspace tasks for `wkit overview`, `wkit validate`, `wkit doctor`, and
+  `wkit status`;
+- workspace tasks for pinned scenario status/run commands where scenario locks
+  exist;
+- workspace tasks for repo entrypoints from `repos/<repo-id>/repo.yaml`;
+- conservative workspace settings that improve multi-root readability without
+  changing repository behavior.
+
+The VS Code export must not write `.vscode/*` files into bound repositories by
+default. It must remain disposable and regenerable from canonical `wkit` state.
 
 ## 5. Relation semantics
 
@@ -387,6 +447,13 @@ In v0.x:
 - relation expansion should stay bounded and explicit;
 - no automatic full-graph traversal is implied;
 - rollout rules may refer to relation kind, but relations alone do not encode every rollout policy.
+
+The validator enforces the relation kind vocabulary. Runtime behavior comes from
+explicit contexts, changes, scenario locks, and coordination rules. A relation
+kind by itself must not imply hidden command execution, hidden rollout order, or
+automatic graph traversal. For example, `kind: contract` only affects rollout
+reasoning when a coordination rule such as `rollout-order` explicitly targets
+that relation kind.
 
 ## 6. Portable guidance model
 
@@ -497,11 +564,13 @@ It may additionally warn on:
 
 ### 9.1 Core commands
 
-- `wkit init <path>`
+- `wkit init <path> [--repo <id=path> ...]`
+- `wkit demo [minimal|failure]`
 - `wkit repo register <repo-id> --kind <kind>`
 - `wkit bind set <repo-id> <path>`
 - `wkit context list`
 - `wkit context show <context-id>`
+- `wkit relations suggest [--context <context-id>]`
 - `wkit info`
 - `wkit overview`
 - `wkit status [--context <context-id>]`
@@ -509,14 +578,128 @@ It may additionally warn on:
 - `wkit validate`
 - `wkit version`
 - `wkit --version`
+- `wkit telemetry enable`
+- `wkit telemetry disable`
+- `wkit telemetry status`
+- `wkit telemetry export`
 - `wkit change new <context> --title <title>`
 - `wkit change show <change-id>`
+- `wkit handoff <change-id> [--scenario <scenario-id>]`
 - `wkit scenario pin <scenario-id> --change <change-id>`
 - `wkit scenario show <scenario-id>`
 - `wkit scenario status <scenario-id>`
 - `wkit scenario run <scenario-id>`
+- `wkit vscode plan`
+- `wkit vscode diff`
+- `wkit vscode apply`
+- `wkit vscode open`
 
-### 9.2 Orientation and diagnostics commands
+### 9.2 Init scaffold flags
+
+`wkit init <path>` creates the canonical workspace directory layout and seed
+manifest files.
+
+The command may also scaffold the first bounded workspace state with explicit
+flags:
+
+- `--repo <id=path>` registers a repo manifest and writes a local binding for an
+  existing checkout path. The flag may be repeated.
+- `--repo-kind <id=kind>` sets the kind for a repo declared with `--repo`.
+  Missing kinds default to `app`.
+- `--relation <from:to:kind>` appends an explicit relation between registered
+  repos. The flag may be repeated.
+- `--context <context-id>` writes a context containing the repos declared in
+  this init invocation. If repos are supplied and no context is named, the
+  scaffold context id is `default`.
+- `--change-title <title>` creates an initial local change from the scaffold
+  context.
+- `--change-kind <kind>` sets the change kind for `--change-title`; the default
+  is `contract`.
+
+Scaffold flags are convenience over existing canonical files. They must not
+discover repositories, infer relations, clone, fetch, pin scenarios, execute
+checks, or generate adapter outputs.
+
+### 9.3 Relation suggestion command
+
+`wkit relations suggest [--context <context-id>]` reads local bound checkouts and
+prints candidate missing `relations:` entries derived from known dependency
+manifests.
+
+The command may inspect:
+
+- `go.mod`;
+- `package.json`;
+- `Cargo.toml`;
+- Gradle settings and build files.
+
+The command is suggestion-only:
+
+- it must not write `coordination/workspace.yaml`;
+- it must not create canonical relations automatically;
+- it must not clone, fetch, install packages, run builds, execute scenario
+  checks, or invoke package managers;
+- it must not treat discovered dependencies as canonical truth until a human
+  accepts them by editing manifests or passing explicit scaffold flags.
+
+Suggested dependency relations should use the existing relation kind vocabulary.
+Package/runtime dependencies should generally map to `runtime`; dev, build, or
+tooling dependencies should generally map to `build`.
+
+`--context` limits inspected repos to the named context. Missing bindings are
+reported as skipped repos rather than silently ignored.
+
+### 9.4 Local telemetry commands
+
+`wkit telemetry enable` enables local opt-in command event logging for the
+current workspace. The opt-in marker is stored in
+`local/telemetry/config.yaml`.
+
+When enabled, CLI invocations that can resolve a workspace append JSONL events
+to `local/telemetry/events.jsonl`. Events include:
+
+- timestamp;
+- workspace path;
+- command path;
+- captured positional and flag arguments;
+- exit code;
+- command duration in milliseconds.
+
+Telemetry is local pilot instrumentation only:
+
+- it must not send data over the network;
+- it must not start a daemon or background process;
+- it must not record environment variables, command output, stdout/stderr logs,
+  file contents, git diffs, or secrets;
+- it must not be enabled by default;
+- it must not affect command behavior if event recording fails.
+
+`wkit telemetry disable` updates the local config so future commands stop
+writing events. Existing `events.jsonl` is left in place for explicit user
+review or deletion.
+
+`wkit telemetry status` prints local telemetry state and event count.
+
+`wkit telemetry export` prints the JSONL event file to stdout. Export is an
+explicit user action; `wkit` does not upload or publish telemetry.
+
+### 9.5 Demo command
+
+`wkit demo [minimal|failure]` runs a self-contained temporary workspace demo
+without requiring an existing workspace or source checkout.
+
+- `minimal` creates two demo repositories, pins and runs a passing
+  `schema-rollout` scenario, and prints the generated markdown report.
+- `failure` creates the same topology, then intentionally introduces pinned ref
+  drift and a failing repo-local check before printing the generated markdown
+  report.
+
+The demo command writes only to a temporary directory, prints the workspace and
+repo paths, and keeps them available for inspection. Demo output is disposable
+and must not become canonical state. In v0.x, the command depends on local Git
+and POSIX `sh` because the generated demo repositories use shell entrypoints.
+
+### 9.6 Orientation and diagnostics commands
 
 Orientation and diagnostics commands are read-only local inspection. They must not
 clone, fetch, pull, push, switch branches, commit, execute scenario checks, or
@@ -547,14 +730,14 @@ mutate repository checkouts.
   state, and builder. `wkit --version` prints a compact single-line variant.
   Neither form inspects a workspace, and both exit `0`.
 
-### 9.3 Install commands
+### 9.7 Install commands
 
 - `wkit install plan <tool> [repo-id]`
 - `wkit install diff <tool> [repo-id]`
 - `wkit install show-targets <tool> [repo-id]`
 - `wkit install apply <tool> [repo-id]`
 
-### 9.4 Install flags
+### 9.8 Install flags
 
 - `--scope repo|user`
 - `--user-root <path>`
@@ -563,6 +746,25 @@ mutate repository checkouts.
 - `--force`
 - `--backup`
 - tool-specific optional flags where needed
+
+### 9.9 Handoff command
+
+`wkit handoff <change-id>` renders a markdown summary for passing bounded
+workspace context to another human or agent.
+
+The handoff output is derived from existing state:
+
+- the `change` manifest;
+- its named `context`;
+- local bindings for affected repositories;
+- the newest scenario lock that references the change, unless `--scenario`
+  selects a specific lock;
+- the latest local scenario report for that scenario, when present.
+
+The command must not create new canonical state. It must not inspect PRs, issue
+trackers, code-host state, or remote CI state. If no scenario exists yet, it
+should still summarize the change and include the next local command to pin a
+scenario.
 
 ## 10. Scenario behavior
 
@@ -582,6 +784,8 @@ It is **not** intended to guarantee:
 - complete dependency replay;
 - machine-independent environment reproduction;
 - CI-level orchestration.
+
+The CI boundary is fixed in `docs/adr/0002-scenario-ci-boundary.md`.
 
 ### 10.2 `scenario pin`
 
@@ -611,7 +815,8 @@ The implementation must:
 - run the declared commands in the declared `cwd`;
 - apply timeout behavior where declared;
 - include `env_profile` in reports when present, without loading environment state automatically;
-- emit a text-first report suitable for review;
+- emit reviewable derived reports, including structured YAML and human-facing
+  text/markdown summaries where implemented;
 - record per-check status;
 - optionally record `stdout_path`, `stderr_path`, and artifact paths.
 
@@ -629,11 +834,70 @@ Allowed check statuses in v0.x:
 
 `blocked` means the check could not safely start because a prerequisite was not met, for example missing binding, missing command, or disallowed worktree state.
 
-## 11. Adapter contract
+## 11. VS Code workspace behavior
+
+### 11.1 Intent
+
+The VS Code export is an IDE orientation surface, not a new adapter truth model.
+It should make bound polyrepo checkouts easier to open, inspect, search, and run
+through declared entrypoints in VS Code.
+
+### 11.2 Generated target
+
+The initial v0.x target is:
+
+```text
+local/vscode/workspace.code-workspace
+```
+
+The fixed target path avoids using `workspace.id` as a filesystem component.
+
+### 11.3 Commands
+
+- `wkit vscode plan`
+- `wkit vscode diff`
+- `wkit vscode apply`
+- `wkit vscode open`
+
+`plan`, `diff`, and `apply` follow the same preview-before-write posture as
+install commands. `apply` requires `--yes` before writing and supports
+`--dry-run`, `--force`, and `--backup`.
+
+`open` runs `code <workspace-file>` for the generated file. If the workspace
+file is missing or stale, `open` must not write unless the user passes `--yes`.
+
+### 11.4 Task generation
+
+Generated VS Code tasks should use `process` tasks where possible, with command
+and arguments separated. Repo entrypoint tasks must preserve repo-local
+executable truth from `repo.yaml`; they must not invent centralized commands.
+
+Entrypoint commands with quoted arguments remain unsupported in v0.x. Users
+should move shell-sensitive workflows into repo-local wrapper scripts.
+
+Repo entrypoint task `cwd` values must be relative to the bound repo and must
+not escape the repo checkout. Generated tasks should use scoped
+`${workspaceFolder:<repo-id>}` variables for bound repo folders.
+
+### 11.5 Safety
+
+The VS Code export must:
+
+- require bindings for every declared repo before rendering a complete
+  workspace file;
+- keep generated output inside the `wkit` workspace root both lexically and
+  after resolving existing parent directories;
+- block symlinked target files or symlinked parent paths that escape the
+  workspace boundary;
+- refuse to overwrite changed files unless `--force` or `--backup` is explicit;
+- write backups with the same `<original-path>.bak.<UTC timestamp>` convention
+  used by install targets.
+
+## 12. Adapter contract
 
 Adapters are installation strategies for real tool discovery scopes.
 
-### 11.1 Supported adapters in v0.x
+### 12.1 Supported adapters in v0.x
 
 - `portable`
 - `codex`
@@ -641,13 +905,13 @@ Adapters are installation strategies for real tool discovery scopes.
 - `copilot`
 - `claude`
 
-### 11.2 Scope model
+### 12.2 Scope model
 
 - **Repo scope** is the default and primary installation mode.
 - **User scope** is explicit and may differ by tool.
 - User-scope installs should prefer **skills-first** behavior where global instruction paths are inconsistent across tools.
 
-### 11.3 Compatibility model
+### 12.3 Compatibility model
 
 Adapter behavior is a versioned compatibility assumption, not timeless truth.
 
@@ -663,9 +927,9 @@ Public docs must distinguish:
 - verification status (`docs-backed`, `empirically verified`, or `candidate / unverified`);
 - tool/version-specific caveats.
 
-## 12. Install safety contract
+## 13. Install safety contract
 
-### 12.1 Plan target record
+### 13.1 Plan target record
 
 Each plan target must include:
 
@@ -679,7 +943,7 @@ Each plan target must include:
 - optional `backup_path`
 - optional `notes`
 
-### 12.2 Plan statuses
+### 13.2 Plan statuses
 
 Allowed plan statuses in v0.x:
 
@@ -689,7 +953,7 @@ Allowed plan statuses in v0.x:
 - `overwrite` — target exists and will be replaced because overwrite is explicitly allowed.
 - `backup+overwrite` — target exists, a backup will be written, and then the target will be replaced.
 
-### 12.3 Ownership markers
+### 13.3 Ownership markers
 
 Where file format permits, adapter outputs should include a short marker indicating:
 
@@ -699,7 +963,7 @@ Where file format permits, adapter outputs should include a short marker indicat
 
 If file format does not naturally support comments, ownership may remain `unknown` and overwrite rules must stay conservative.
 
-### 12.4 Unmarked existing files
+### 13.4 Unmarked existing files
 
 If a target exists and content differs:
 
@@ -709,7 +973,7 @@ If a target exists and content differs:
 
 The implementation should not assume that an unmarked file is safe to replace.
 
-### 12.5 Backup naming
+### 13.5 Backup naming
 
 Backups should use:
 
@@ -719,7 +983,7 @@ If that backup path already exists, implementations must not overwrite it. They 
 
 Backup creation should stage content before finalizing the backup where possible. If backup creation fails after creating the final backup path, implementations should clean up that newly created path so a valid-looking partial backup artifact is not left behind.
 
-### 12.6 Install path containment
+### 13.6 Install path containment
 
 Installer planning, diffing, and applying are safety-sensitive because both source
 guidance and existing target files may be supplied by an untrusted workspace or
@@ -741,19 +1005,19 @@ the intended boundary:
 Unsafe source or target paths should be reported as blocked plan targets with a
 short explanatory note where practical.
 
-### 12.7 Exit codes
+### 13.7 Exit codes
 
 Suggested v0.x exit codes:
 
 - `0` — success
 - `2` — validation, doctor, or argument error
-- `3` — blocked install targets
+- `3` — blocked install or VS Code workspace targets
 - `4` — scenario drift, missing binding, or blocked `scenario status` / `scenario run` prerequisite
 - `5` — command failure during scenario run
 
 If one scenario run contains both blocked/drift checks and command failures, command failure takes precedence for the process exit code.
 
-## 13. Proof-oriented invariants
+## 14. Proof-oriented invariants
 
 The following are invariants for the proof stage:
 

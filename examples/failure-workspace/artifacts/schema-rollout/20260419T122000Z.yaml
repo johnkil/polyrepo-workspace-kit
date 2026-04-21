@@ -1,0 +1,22 @@
+version: 1
+report:
+  scenario: schema-rollout
+  generated_at: "2026-04-19T12:20:00Z"
+  report_kind: local-validation-run
+results:
+  - check: shared-schema:test
+    status: blocked
+    duration_seconds: 0.01
+    reason: "pinned ref drift: current HEAD 333333333333 does not match scenario lock 111111111111"
+    env_profile: default
+    stdout_path: null
+    stderr_path: null
+    artifacts: []
+  - check: app-web:test
+    status: failed
+    duration_seconds: 0.02
+    reason: exit status 7
+    env_profile: default
+    stdout_path: logs/20260419T122000Z/app-web-test.stdout.txt
+    stderr_path: logs/20260419T122000Z/app-web-test.stderr.txt
+    artifacts: []

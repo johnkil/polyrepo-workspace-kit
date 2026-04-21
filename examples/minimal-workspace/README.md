@@ -12,6 +12,7 @@ It demonstrates:
 - change creation;
 - scenario pin and run;
 - portable install into a repo checkout.
+- local VS Code multi-root workspace export.
 
 A committed sample of the scenario evidence is available under `artifacts/schema-rollout/`.
 

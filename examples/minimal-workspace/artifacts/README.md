@@ -12,6 +12,7 @@ Files:
 - `schema-rollout/manifest.lock.yaml` - pinned scenario snapshot.
 - `schema-rollout/20260419T121000Z.yaml` - structured run report.
 - `schema-rollout/20260419T121000Z.txt` - human-readable run summary.
+- `schema-rollout/20260419T121000Z.md` - reviewer-friendly markdown summary.
 - `schema-rollout/logs/20260419T121000Z/*` - stdout/stderr logs referenced by the report.
 
 This is a committed sample artifact, not live output. Commit hashes, timestamps, durations, and tool versions are deterministic example values so the artifact stays reviewable in documentation.

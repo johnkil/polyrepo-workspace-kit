@@ -47,6 +47,8 @@ wkit --workspace "$workspace" scenario run schema-rollout
 
 wkit --workspace "$workspace" install plan portable app-web
 wkit --workspace "$workspace" install apply portable app-web --yes
+wkit --workspace "$workspace" vscode plan
+wkit --workspace "$workspace" vscode apply --yes
 wkit --workspace "$workspace" validate
 
 printf '\nDemo workspace: %s\n' "$workspace"

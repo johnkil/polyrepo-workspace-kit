@@ -25,6 +25,39 @@ type Relation struct {
 	Kind string `yaml:"kind"`
 }
 
+const (
+	RelationKindRuntime  = "runtime"
+	RelationKindBuild    = "build"
+	RelationKindContract = "contract"
+	RelationKindRelease  = "release"
+	RelationKindDocs     = "docs"
+)
+
+var relationKinds = []string{
+	RelationKindRuntime,
+	RelationKindBuild,
+	RelationKindContract,
+	RelationKindRelease,
+	RelationKindDocs,
+}
+
+var relationKindSet = map[string]struct{}{
+	RelationKindRuntime:  {},
+	RelationKindBuild:    {},
+	RelationKindContract: {},
+	RelationKindRelease:  {},
+	RelationKindDocs:     {},
+}
+
+func IsRelationKind(value string) bool {
+	_, ok := relationKindSet[value]
+	return ok
+}
+
+func RelationKinds() []string {
+	return append([]string(nil), relationKinds...)
+}
+
 type RepoDocument struct {
 	Version     int                   `yaml:"version,omitempty"`
 	Repo        RepoMeta              `yaml:"repo"`
