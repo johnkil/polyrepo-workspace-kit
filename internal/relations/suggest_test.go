@@ -154,6 +154,44 @@ func TestSuggestGradleNamedProjectPathSyntax(t *testing.T) {
 	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "shared-schema")
 }
 
+func TestSuggestGradleNamedProjectPathSyntaxWithExtraArgs(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	writeFile(t, app, "build.gradle", `dependencies {
+  implementation project(path: ':shared-schema', configuration: 'default')
+}`)
+	writeFile(t, app, "build.gradle.kts", `dependencies {
+  implementation(project(path = ":shared-schema", configuration = "default"))
+}`)
+	writeFile(t, schema, "settings.gradle", `rootProject.name = 'shared-schema'`)
+	writeFile(t, schema, "settings.gradle.kts", `rootProject.name = "shared-schema"`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle", "shared-schema")
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "shared-schema")
+}
+
+func TestSuggestGradleNamedExternalDependencySyntax(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	writeFile(t, app, "build.gradle", `dependencies {
+  implementation group: 'com.acme', name: 'shared-schema', version: '1.0.0'
+}`)
+	writeFile(t, app, "build.gradle.kts", `dependencies {
+  implementation(group = "com.acme", name = "shared-schema", version = "1.0.0")
+}`)
+	writeFile(t, schema, "settings.gradle", `rootProject.name = 'shared-schema'`)
+	writeFile(t, schema, "settings.gradle.kts", `rootProject.name = "shared-schema"`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle", "shared-schema")
+	assertSuggestion(t, report, "app-web", "shared-schema", "runtime", "build.gradle.kts", "shared-schema")
+}
+
 func TestSuggestGradleCompileOnlyProjectDependencyIsBuildKind(t *testing.T) {
 	root, app, schema := seedWorkspace(t)
 	writeFile(t, app, "build.gradle", `dependencies {

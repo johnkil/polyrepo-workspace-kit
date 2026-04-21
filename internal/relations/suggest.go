@@ -393,21 +393,43 @@ func gradleDependencyValue(value string) string {
 	if strings.HasPrefix(value, "project(") {
 		return gradleProjectName(value)
 	}
-	return trimQuoted(value)
+	if name, ok := gradleNamedArg(value, "name"); ok {
+		return gradleCleanDependencyName(name)
+	}
+	return gradleCleanDependencyName(gradleFirstArg(value))
 }
 
 func gradleProjectName(value string) string {
 	name := between(value, "project(", ")")
-	name = strings.TrimSpace(name)
-	for _, separator := range []string{"=", ":"} {
-		left, right, ok := strings.Cut(name, separator)
-		if ok && strings.TrimSpace(left) == "path" {
-			name = right
-			break
+	if path, ok := gradleNamedArg(name, "path"); ok {
+		return gradleCleanDependencyName(path)
+	}
+	return gradleCleanDependencyName(gradleFirstArg(name))
+}
+
+func gradleCleanDependencyName(value string) string {
+	return strings.TrimPrefix(trimQuoted(value), ":")
+}
+
+func gradleFirstArg(value string) string {
+	value = strings.TrimSpace(value)
+	if left, _, ok := strings.Cut(value, ","); ok {
+		return strings.TrimSpace(left)
+	}
+	return value
+}
+
+func gradleNamedArg(value string, key string) (string, bool) {
+	for _, arg := range strings.Split(value, ",") {
+		arg = strings.TrimSpace(arg)
+		for _, separator := range []string{"=", ":"} {
+			left, right, ok := strings.Cut(arg, separator)
+			if ok && strings.TrimSpace(left) == key {
+				return strings.TrimSpace(right), true
+			}
 		}
 	}
-	name = strings.TrimPrefix(trimQuoted(name), ":")
-	return name
+	return "", false
 }
 
 func matchDependency(dep string, identities map[string]struct{}) (string, bool) {
