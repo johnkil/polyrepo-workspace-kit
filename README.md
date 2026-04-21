@@ -380,6 +380,7 @@ Core docs:
 - [RFC: Core Model and Layering](docs/rfc.md)
 - [Technical Specification](docs/spec.md)
 - [Proof and Pilot Plan](docs/plan.md)
+- [Pilot Kit](docs/pilot-kit.md)
 - [Implementation Plan](docs/implementation-plan.md)
 - [Install and Development](docs/install.md)
 - [VS Code Workspace Export](docs/vscode.md)

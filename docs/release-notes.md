@@ -32,6 +32,8 @@ proof-hardening artifacts for scenario evidence.
   missing relation candidates without writing canonical graph state.
 - Added local opt-in pilot telemetry commands for workspace-local JSONL command
   event logs.
+- Added `docs/pilot-kit.md` with the participant checklist, run sheet, evidence
+  bundle template, and pilot pass/fail rubric.
 
 ### Behavior Notes
 

@@ -373,6 +373,24 @@ Acceptance:
   output, or change command behavior when recording fails;
 - export is explicit and prints the local JSONL event file.
 
+## Milestone 12: Pilot Kit
+
+Status: done
+
+Scope:
+
+- non-author pilot run sheet;
+- participant checklist;
+- evidence bundle template;
+- pass/fail rubric for proof-stage pilots.
+
+Acceptance:
+
+- the runbook is explicit about required artifacts;
+- telemetry remains optional;
+- the rubric distinguishes passed, inconclusive, and failed pilots;
+- the kit does not introduce new product scope.
+
 ### Proof Hardening Backlog
 
 Implement in this order unless pilot evidence changes the priority:

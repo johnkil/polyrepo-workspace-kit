@@ -31,6 +31,8 @@ The format is intentionally lightweight during v0.x. Public releases should keep
   relation candidates.
 - Added local opt-in pilot telemetry commands: `wkit telemetry enable`,
   `disable`, `status`, and `export`.
+- Added `docs/pilot-kit.md` with a non-author pilot checklist, run sheet,
+  evidence bundle template, and pass/fail rubric.
 
 ### Fixed
 

@@ -267,6 +267,9 @@ For each pilot or workflow, capture:
 - participant feedback;
 - what stayed frozen vs what users asked to broaden.
 
+Use `docs/pilot-kit.md` as the run sheet, participant checklist, evidence bundle
+template, and pass/fail rubric for non-author pilots.
+
 ## 9. Stop conditions
 
 Stop adding new core nouns if any of the following are true:
