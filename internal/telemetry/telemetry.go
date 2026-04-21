@@ -134,6 +134,18 @@ func RecordIfEnabled(root string, event Event) error {
 	if !status.Enabled {
 		return nil
 	}
+	return recordEvent(root, status.EventsPath, event)
+}
+
+func Record(root string, event Event) error {
+	status, _, err := readConfigStatus(root)
+	if err != nil {
+		return err
+	}
+	return recordEvent(root, status.EventsPath, event)
+}
+
+func recordEvent(root string, eventsPath string, event Event) error {
 	if event.Timestamp == "" {
 		event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	}
@@ -147,10 +159,10 @@ func RecordIfEnabled(root string, event Event) error {
 	if err != nil {
 		return err
 	}
-	if err := fsutil.EnsureDir(filepath.Dir(status.EventsPath)); err != nil {
+	if err := fsutil.EnsureDir(filepath.Dir(eventsPath)); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(status.EventsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(eventsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}

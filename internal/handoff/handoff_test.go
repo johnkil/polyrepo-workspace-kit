@@ -84,6 +84,35 @@ func TestMarkdownUsesLatestSameSecondReport(t *testing.T) {
 	}
 }
 
+func TestMarkdownUsesNewestSameSecondScenarioLock(t *testing.T) {
+	root, _, changeID := seedHandoffWorkspace(t)
+	generatedAt := time.Date(2026, 4, 19, 12, 5, 0, 0, time.UTC)
+	olderPath, err := scenario.Pin(root, "z-older", changeID, generatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newerPath, err := scenario.Pin(root, "a-newer", changeID, generatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	olderModTime := time.Date(2026, 4, 19, 12, 5, 1, 0, time.UTC)
+	newerModTime := olderModTime.Add(time.Second)
+	if err := os.Chtimes(olderPath, olderModTime, olderModTime); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(newerPath, newerModTime, newerModTime); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := handoff.Markdown(root, changeID, handoff.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "- scenario: `a-newer`") {
+		t.Fatalf("expected newest lock to be selected by mtime, got:\n%s", out)
+	}
+}
+
 func TestMarkdownWithoutScenarioStillSummarizesChange(t *testing.T) {
 	root, _, changeID := seedHandoffWorkspace(t)
 	out, err := handoff.Markdown(root, changeID, handoff.Options{})

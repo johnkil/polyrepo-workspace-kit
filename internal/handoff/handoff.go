@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/manifest"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/model"
@@ -20,8 +21,9 @@ type Options struct {
 }
 
 type selectedScenario struct {
-	ID   string
-	Lock model.ScenarioLockDocument
+	ID      string
+	Lock    model.ScenarioLockDocument
+	ModTime time.Time
 }
 
 type latestReport struct {
@@ -196,7 +198,11 @@ func selectScenario(root string, changeID string, requested string) (*selectedSc
 			return nil, err
 		}
 		if lock.Scenario.Change == changeID {
-			matches = append(matches, selectedScenario{ID: scenarioID, Lock: lock})
+			info, err := os.Stat(path)
+			if err != nil {
+				return nil, err
+			}
+			matches = append(matches, selectedScenario{ID: scenarioID, Lock: lock, ModTime: info.ModTime()})
 		}
 	}
 	if len(matches) == 0 {
@@ -206,6 +212,9 @@ func selectScenario(root string, changeID string, requested string) (*selectedSc
 		left := matches[i].Lock.Scenario.GeneratedAt
 		right := matches[j].Lock.Scenario.GeneratedAt
 		if left == right {
+			if !matches[i].ModTime.Equal(matches[j].ModTime) {
+				return matches[i].ModTime.Before(matches[j].ModTime)
+			}
 			return matches[i].ID < matches[j].ID
 		}
 		return left < right

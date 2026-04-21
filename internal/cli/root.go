@@ -43,10 +43,11 @@ func Execute() int {
 }
 
 type cliRunRecord struct {
-	Command       string
-	Args          []string
-	RawArgs       []string
-	WorkspaceFlag string
+	Command                       string
+	Args                          []string
+	RawArgs                       []string
+	WorkspaceFlag                 string
+	RecordTelemetryEvenIfDisabled bool
 }
 
 func executeRoot(root *cobra.Command, record *cliRunRecord, started time.Time) int {
@@ -141,6 +142,7 @@ func newRootCommandWithRecorder(record *cliRunRecord) *cobra.Command {
 			record.Command = cmd.CommandPath()
 			record.Args = captureArgs(cmd, args)
 			record.WorkspaceFlag = workspaceFlag
+			record.RecordTelemetryEvenIfDisabled = shouldRecordTelemetryEvenIfDisabled(cmd, workspaceFlag)
 		}
 	}
 
@@ -202,6 +204,21 @@ func workspaceFlagFromArgs(args []string) string {
 	return ""
 }
 
+func shouldRecordTelemetryEvenIfDisabled(cmd *cobra.Command, workspaceFlag string) bool {
+	if cmd.CommandPath() != "wkit telemetry disable" {
+		return false
+	}
+	root, err := telemetryRoot(workspaceFlag)
+	if err != nil {
+		return false
+	}
+	status, err := telemetry.ReadStatus(root)
+	if err != nil {
+		return false
+	}
+	return status.Enabled
+}
+
 func recordTelemetryEvent(record *cliRunRecord, code int, duration time.Duration, now time.Time) {
 	if record == nil || record.Command == "" {
 		return
@@ -210,14 +227,19 @@ func recordTelemetryEvent(record *cliRunRecord, code int, duration time.Duration
 	if err != nil {
 		return
 	}
-	_ = telemetry.RecordIfEnabled(root, telemetry.Event{
+	event := telemetry.Event{
 		Timestamp:  now.UTC().Format(time.RFC3339),
 		Workspace:  root,
 		Command:    record.Command,
 		Args:       record.Args,
 		ExitCode:   code,
 		DurationMS: duration.Milliseconds(),
-	})
+	}
+	if record.RecordTelemetryEvenIfDisabled {
+		_ = telemetry.Record(root, event)
+		return
+	}
+	_ = telemetry.RecordIfEnabled(root, event)
 }
 
 func telemetryRoot(workspaceFlag string) (string, error) {
