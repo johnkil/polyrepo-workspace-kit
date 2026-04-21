@@ -5,44 +5,44 @@
 [![Release](https://img.shields.io/github/v/release/johnkil/polyrepo-workspace-kit?display_name=tag&sort=semver)](https://github.com/johnkil/polyrepo-workspace-kit/releases)
 [![License](https://img.shields.io/github/license/johnkil/polyrepo-workspace-kit)](LICENSE)
 
-**A local CLI for polyrepo and multi-repository workspace coordination, cross-repo validation, and generated AI coding-agent guidance.**
+**`wkit` turns a cross-repo change into reviewable local evidence.**
 
-![Polyrepo Workspace Kit CLI and workspace preview](docs/assets/readme-hero.jpg)
+Pin revisions across several local checkouts. Run each repo's own test command.
+Get one report - YAML, plain text, and markdown - that says what passed, what
+failed, and what drifted. Hand it to a reviewer or a coding agent as evidence
+for a coordinated change.
 
-- Repository name: `polyrepo-workspace-kit`
-- Go module: `github.com/johnkil/polyrepo-workspace-kit`
-- CLI: `wkit`
-- Current status: v0.x CLI implementation with release archive install, source install, and tagged release automation
+## See the artifact first
 
-Polyrepo Workspace Kit helps teams coordinate repeated work across many repositories without pretending a polyrepo is a monorepo and without turning tool-specific agent files into the source of truth. It gives humans and coding agents one local workspace model for repository relationships, live changes, validation scenarios, local checkout bindings, generated VS Code multi-root workspaces, and derived guidance files such as `AGENTS.md`, `CLAUDE.md`, `.agents/skills/*`, and Copilot instructions.
+After `wkit demo failure`, `local/reports/schema-rollout/<run-id>.txt` looks
+like this:
 
-This repository currently contains the product baseline, technical specification, proof plan, research base, and the current Go implementation for `wkit`. The implemented CLI surface currently covers workspace initialization, repo registration, local bindings, suggestion-only relation discovery, context orientation, workspace overview/status/doctor diagnostics, change creation/showing, markdown handoff summaries, scenario pin/status/run, VS Code multi-root workspace export, local opt-in pilot telemetry, portable install, repo-scope tool adapters, validation, and version reporting. Tool-specific user-scope installs, Homebrew packaging, and signed/notarized binaries remain planned.
+```text
+Scenario: schema-rollout
+Results: passed=0 failed=1 blocked=1 skipped=0
 
-Use it when you need to:
+- blocked: shared-schema:test (pinned ref drift: current HEAD 333333333333 does not match scenario lock 111111111111)
+  env_profile: default
+- failed: app-web:test (exit status 7)
+  stdout: logs/20260419T122000Z/app-web-test.stdout.txt
+  stderr: logs/20260419T122000Z/app-web-test.stderr.txt
+  env_profile: default
+```
 
-- describe a local multi-repo workspace explicitly;
-- coordinate contract changes, rollout order, or shared-schema work across repositories;
-- pin a reviewable cross-repo validation snapshot before handoff;
-- render a markdown handoff summary from a change, scenario lock, and latest report;
-- run repo-local checks through declared entrypoints without centralizing arbitrary commands;
-- generate repo-scope coding-agent guidance for Codex, OpenCode, GitHub Copilot, Claude, or portable `AGENTS.md` consumers.
+Two different failure modes are caught in one run: `shared-schema` moved past
+its pinned commit, and `app-web` ran but exited non-zero with stderr captured. A
+committed sample is in
+[`examples/failure-workspace/artifacts/`](examples/failure-workspace/artifacts/README.md),
+so you can inspect the evidence without installing anything.
 
-## Quick Start
+This is the center of the product. Not another `AGENTS.md` generator.
+
+## Install and try
 
 Install a prebuilt binary on macOS or Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh | sh
-```
-
-The installer downloads the latest GitHub Release archive, verifies
-`checksums.txt`, and installs `wkit` into the first writable directory already
-on `PATH`. If no writable `PATH` directory exists, install into a system path
-without editing shell startup files:
-
-```bash
-curl -fsSL -o /tmp/wkit-install.sh https://raw.githubusercontent.com/johnkil/polyrepo-workspace-kit/main/install.sh
-sudo WKIT_INSTALL_DIR=/usr/local/bin sh /tmp/wkit-install.sh
 ```
 
 Install from source with Go:
@@ -51,378 +51,171 @@ Install from source with Go:
 go install github.com/johnkil/polyrepo-workspace-kit/cmd/wkit@latest
 ```
 
-Tagged releases also provide prebuilt archives and `checksums.txt` on the [GitHub Releases page](https://github.com/johnkil/polyrepo-workspace-kit/releases).
-
-From a local checkout:
+Then run the bundled demos. Both write only to a temporary directory:
 
 ```bash
-make tools
-make check
-go run ./cmd/wkit --help
+wkit demo          # happy path: two repos, both tests pass
+wkit demo failure  # drift in one repo, failed test in the other
 ```
 
-Run a self-contained first-run demo from an installed `wkit` binary in a
-POSIX-sh environment. macOS and Linux are supported today; Windows builds
-intentionally reject this demo in v0.x because the generated demo repositories
-use shell entrypoints.
+## When `wkit` fits
+
+Use `wkit` when several repositories change together and the current process is
+Slack messages, tribal knowledge, ad hoc checklists, and rediscovered breakage
+after handoff. Typical shapes:
+
+- shared schema + service + generated SDK + docs + examples
+- shared library + several consumers
+- API contract + mobile app + web app + backend
+
+You want to declare explicitly which repos are involved in this change, produce
+evidence that they work together, and hand that evidence to a reviewer or an
+agent without adopting a monorepo build system, a developer portal, or a hosted
+PR platform.
+
+## When `wkit` does not fit
+
+Stated plainly so you do not waste time:
+
+- **One repo.** Your existing tools are probably enough.
+- **Cross-repo code search.** Use Sourcegraph, ripgrep, or your IDE's multi-root search.
+- **Mechanical PR campaigns at scale.** Use [Sourcegraph Batch Changes](https://sourcegraph.com/docs/batch-changes) or [multi-gitter](https://github.com/lindell/multi-gitter).
+- **Service catalog, ownership, on-call, or scorecards.** Use [Backstage](https://backstage.io/).
+- **Just an AGENTS.md generator.** Use [agents.ge](https://agents.ge/).
+- **A CI replacement.** `wkit` [explicitly is not one](docs/adr/0002-scenario-ci-boundary.md): no daemon, no webhooks, no hosted runners, no remote run history.
+
+See [competitive research](research/competitors.md) for a more detailed
+comparison.
+
+## The model, in one paragraph
+
+A **workspace** contains **repos** linked by **relations** (`contract`, `build`,
+`runtime`, `release`, `docs`). A **context** names the subset of repos relevant
+to a task. A **change** is a live cross-repo unit of work tied to a context. A
+**scenario** pins involved repos to specific commits and runs each repo's
+declared **entrypoint**. Commands stay repo-local; the workspace does not
+centralize arbitrary build or test truth. **Bindings** map logical repo ids to
+local checkout paths and live in `local/bindings.yaml` because paths are local
+facts, not shared state.
+
+Nine nouns total, [fully specified here](docs/spec.md). You do not need to learn
+them all before starting; the scaffold flags below handle the first workspace.
+
+## End-to-end workflow
 
 ```bash
-wkit demo
-wkit demo failure
-```
-
-Scaffold a first real workspace without hand-writing every manifest:
-
-```bash
-wkit init ./workspace \
+# One command scaffolds a workspace, repos, relations, context, and first change.
+INIT_OUTPUT="$(wkit init ./ws \
   --repo app-web=../app-web \
   --repo shared-schema=../shared-schema \
   --repo-kind shared-schema=contract \
   --relation app-web:shared-schema:contract \
   --context schema-rollout \
-  --change-title "Payload field rollout"
+  --change-title "Payload field rollout")"
+printf '%s\n' "$INIT_OUTPUT"
+CHANGE_ID="$(printf '%s\n' "$INIT_OUTPUT" | awk '/^change:/ { print $2 }')"
+
+# Suggest more relations from go.mod, build.gradle, package.json, and Cargo.toml.
+# Read-only: you approve suggestions before they become canonical workspace state.
+wkit --workspace ./ws relations suggest
+
+# Pin and run the scenario.
+wkit --workspace ./ws scenario pin schema-rollout --change "$CHANGE_ID"
+wkit --workspace ./ws scenario run schema-rollout
+
+# Produce a single markdown handoff with change + scenario + latest report.
+wkit --workspace ./ws handoff "$CHANGE_ID" --scenario schema-rollout
+
+# Optional: generate a VS Code multi-root workspace for the bound repos.
+wkit --workspace ./ws vscode apply --yes
 ```
 
-Ask `wkit` for dependency-manifest-based relation candidates without writing
-canonical graph state:
-
-```bash
-wkit --workspace ./workspace relations suggest
-```
-
-Run the minimal polyrepo workspace demo:
-
-```bash
-make demo
-```
-
-Run the failure/drift scenario evidence demo:
-
-```bash
-make failure-demo
-```
-
-Build a local `wkit` binary:
-
-```bash
-make build
-```
-
-## Product Thesis
-
-The durable opportunity is not "generate more agent files."
-
-The durable opportunity is to help humans and agents answer:
-
-- which repositories belong to this workspace;
-- how those repositories relate;
-- which repositories matter for a task or live change;
-- what local checks provide reviewable evidence for that change;
-- which generated agent files came from canonical workspace context.
-
-The strongest wedge is therefore:
-
-**cross-repo coordination and scenario validation in a local multi-repo workspace.**
-
-## Layers
-
-The project has five layers.
-
-### 1. Core Workspace
-
-The core is the canonical coordination model.
-
-- `workspace` - shared coordination boundary
-- `repo` - known repository descriptor
-- `relation` - directional cross-repo link
-- `rule` - coordination constraint such as rollout order
-- `context` - named lookup boundary
-- `change` - live cross-repo coordination object
-- `scenario` - reviewable local validation snapshot
-- `binding` - local checkout path for a repo id
-- `entrypoint` - repo-local executable truth, such as `test`
-
-### 2. Portable Guidance
-
-Portable guidance is intentionally narrow.
-
-- `guidance/rules/*` - short always-on agent guidance
-- `guidance/skills/*/SKILL.md` - reusable skill-style workflows
-
-Portable outputs are derived artifacts:
-
-- `AGENTS.md`
-- `.agents/skills/*`
-
-### 3. IDE Orientation
-
-IDE orientation exports local, disposable editor metadata from the canonical
-workspace model.
-
-- `local/vscode/workspace.code-workspace` - a generated VS Code multi-root
-  workspace file containing bound repo folders, `wkit` tasks, and repo
-  entrypoint tasks
-
-The VS Code export is a local derived artifact. It does not write `.vscode/*`
-files into bound repositories by default.
-
-### 4. Adapters
-
-Adapters install derived guidance into real tool discovery scopes. Adapter outputs are not canonical truth.
-
-Initial v0.x target surface:
-
-- `portable`
-  - repo scope: `AGENTS.md`, `.agents/skills/*`
-  - user scope: `.agents/skills/*`
-- `codex`
-  - repo scope: same as portable
-- `opencode`
-  - repo scope: same as portable
-- `copilot`
-  - repo scope: `.github/copilot-instructions.md`
-- `claude`
-  - repo scope: `CLAUDE.md`, `.claude/skills/*`
-
-These targets are docs-backed until compatibility probes record tool version, probe date, target path, and observed behavior. Tool-specific user-scope targets for Codex, OpenCode, Copilot, and Claude remain candidate/unverified until empirical compatibility passes validate them.
-
-### 5. Packs
-
-Packs are a future distribution layer for reusable installs, plugins, or MCP-heavy bundles.
-
-They are deferred for v0.x and are not part of the canonical workspace model.
-
-## What This Is Not
-
-This project is not:
-
-- a monorepo manager;
-- a build graph or distributed task execution platform;
-- a developer portal or software catalog;
-- a retrieval engine or code graph system;
-- an AI IDE;
-- a universal custom-agent or subagent schema;
-- a universal command abstraction framework;
-- a plugin marketplace;
-- a hosted policy system;
-- a long-term project-memory platform.
-
-## State Model
-
-The planned v0.x workspace layout is:
-
-```text
-workspace/
-  coordination/
-    workspace.yaml
-    contexts.yaml
-    changes/
-    scenarios/
-      <scenario-id>/
-        manifest.lock.yaml
-    rules/
-  guidance/
-    rules/
-      always-on.md
-    skills/
-      <skill-name>/
-        SKILL.md
-  repos/
-    <repo-id>/
-      repo.yaml
-  local/
-    bindings.yaml
-    reports/
-      <scenario-id>/
-        <run-id>.yaml
-    vscode/
-      workspace.code-workspace
-  runtime/
-  config/
-  bin/
-```
-
-State classes:
-
-- Canonical shared state: `coordination/*`, `repos/*/repo.yaml`, `guidance/rules/*`, `guidance/skills/*`
-- Canonical machine-local state: `local/bindings.yaml`
-- Derived state: scenario run reports, VS Code workspace exports, and adapter outputs
-
-## Scenario Semantics
-
-For v0.x, a `scenario` is a **reviewable local validation snapshot**, not a full environment reproduction artifact.
-
-It is intended to support:
-
-- pinned local review;
-- bounded drift detection;
-- normalized execution of repo-local entrypoints;
-- handoff and evidence.
-
-It does not claim:
-
-- complete dependency replay;
-- machine-independent environment reproduction;
-- CI-level orchestration.
-
-Fields such as `env_profile` and `env_requirements` are descriptive metadata in v0.x. They do not imply automatic environment loading, secret loading, shell activation, or toolchain management.
-
-Scenario runs write derived evidence under `local/reports/*`, including a structured YAML report, a text summary for quick terminal review, and a markdown summary suitable for PR descriptions or chat handoff.
-
-## CLI Contract
-
-The first implementation slice is backed by the Go CLI in `cmd/wkit`.
-
-Local development:
-
-```bash
-make tools
-make check
-go run ./cmd/wkit --help
-```
-
-`make tools` installs `goimports`, `govulncheck`, and the pinned `golangci-lint` version from `.golangci-lint-version`.
-`make check` also runs the Go race detector and `govulncheck`.
-
-Build a local binary:
-
-```bash
-make build
-```
-
-Run the minimal example:
-
-```bash
-make demo
-```
-
-Implemented commands:
-
-```bash
-wkit init <path> [--repo <id=path> ...] [--relation <from:to:kind> ...]
-wkit demo [minimal|failure]
-wkit repo register <repo-id> --kind <kind>
-wkit bind set <repo-id> <path>
-wkit context list
-wkit context show <context-id>
-wkit relations suggest [--context <context-id>]
-wkit info
-wkit overview
-wkit status [--context <context-id>]
-wkit doctor
-wkit validate
-wkit version
-wkit --version
-wkit telemetry enable
-wkit telemetry disable
-wkit telemetry status
-wkit telemetry export
-wkit change new <context> --title <title>
-wkit change show <change-id>
-wkit handoff <change-id> [--scenario <scenario-id>]
-wkit scenario pin <scenario-id> --change <change-id>
-wkit scenario show <scenario-id>
-wkit scenario status <scenario-id>
-wkit scenario run <scenario-id>
-wkit vscode plan
-wkit vscode diff
-wkit vscode apply
-wkit vscode open
-```
-
-Orientation and diagnostic commands are read-only. `wkit status`, `wkit doctor`, and `wkit scenario status` do not run remote fetches, do not execute scenario checks, and do not mutate local checkouts.
-
-Implemented install commands:
-
-```bash
-wkit install show-targets <tool> [repo-id]
-wkit install plan <tool> [repo-id]
-wkit install diff <tool> [repo-id]
-wkit install apply <tool> [repo-id]
-```
-
-Supported tools:
-
-- `portable`
-- `codex`
-- `opencode`
-- `copilot`
-- `claude`
-
-Tool-specific user-scope installs remain candidate/unverified and are intentionally not implemented.
-
-Install safety is part of the product contract:
-
-- plan before writing;
-- target inspection;
-- textual diff;
-- confirmation;
-- `--dry-run`;
-- `--force`;
-- `--backup`;
-- conservative handling of unmarked existing files.
-
-## Proof Plan
-
-The project should be called MVP-proven only when:
-
-- 2 independent pilots are completed;
-- 3 measured workflows are captured, with all 6 candidate workflows as stretch evidence;
-- 1 cold-start onboarding succeeds;
-- 1 compatibility pass is completed for each non-portable tool adapter;
-- 1 portable output smoke test is completed for `AGENTS.md` and `.agents/skills/*`;
-- at least 1 non-author pilot participant says keeping the manifests current is worth the coordination savings;
-- the core workflow remains useful even when adapter install is not the primary user value;
-- no new canonical entities are added during the proof window.
+Reports, VS Code workspace files, and adapter outputs are derived artifacts.
+Canonical truth lives in the shared manifests under `coordination/`, `repos/`,
+and `guidance/`, plus machine-local bindings under `local/bindings.yaml`.
+
+## Agent guidance (optional)
+
+`wkit install plan|diff|apply <tool>` derives agent-readable files from
+`guidance/rules/*` and `guidance/skills/*`. Supported in repo scope:
+
+| tool | output |
+| --- | --- |
+| `portable` | `AGENTS.md`, `.agents/skills/*` |
+| `codex` | same as portable |
+| `opencode` | same as portable |
+| `copilot` | `.github/copilot-instructions.md` |
+| `claude` | `CLAUDE.md`, `.claude/skills/*` |
+
+Every write is previewable with `install plan`, diffable with `install diff`,
+and requires `install apply --yes`. Changed unmarked files are blocked unless
+you pass `--force` or `--backup`. See
+[empirical compatibility notes](research/empirical-agent-compatibility-matrix.md)
+for which tool versions have been probed against these targets.
+
+Tool-specific user-scope targets are deliberately deferred. Portable user scope
+is skills-only: `.agents/skills/*`.
+
+## Safety and scope
+
+- `wkit scenario run` does not clone, fetch, install packages, upload data,
+  start daemons, or call remote services as part of its own orchestration.
+- Repo-local entrypoints are still your commands; if a script reaches the
+  network, that is repo behavior, not `wkit` orchestration.
+- No daemon, background scheduler, webhook listener, hosted runner, or remote
+  run history.
+- `bind set` rejects missing paths before writing.
+- Scenario commands with shell quoting are rejected; use a repo-local wrapper
+  script.
+- Scenario `cwd` values and symlinks that escape a repo checkout are rejected
+  before command execution.
+- `install apply` and `vscode apply` will not write without explicit `--yes`.
+- Pilot telemetry is opt-in, local-only, and never exported unless you run
+  `wkit telemetry export`.
+
+More in [`SECURITY.md`](SECURITY.md).
+
+## Status
+
+**v0.3.0 - proof stage.** The CLI is usable, tested, and release-packaged, but
+the project is not MVP-proven until independent pilots produce evidence.
+
+- Core workspace model, scenarios, reports, portable install, repo-scope
+  adapters, VS Code export, demos, handoff, relation suggestions, and local
+  telemetry are shipped.
+- Two example workspaces, minimal and failure, are exercised in CI.
+- Empirical compatibility probes: Codex 0.117.0 and Claude Code 2.1.90 done.
+  OpenCode and Copilot are pending.
+- Non-author pilots: **actively recruiting**. If you run a repeated polyrepo
+  workflow and want to try `wkit` end-to-end, see
+  [`docs/pilot-kit.md`](docs/pilot-kit.md).
+- Homebrew packaging, signing/notarization, OS packages, and tool-specific
+  user-scope installs are deferred.
+
+During v0.x, minor releases may change command, manifest, adapter, or validation
+behavior. Breaking changes are called out in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Documentation
-
-Core docs:
 
 - [Product Requirements](docs/prd.md)
 - [RFC: Core Model and Layering](docs/rfc.md)
 - [Technical Specification](docs/spec.md)
 - [Proof and Pilot Plan](docs/plan.md)
 - [Pilot Kit](docs/pilot-kit.md)
-- [Implementation Plan](docs/implementation-plan.md)
 - [Install and Development](docs/install.md)
 - [VS Code Workspace Export](docs/vscode.md)
 - [Release and Versioning](docs/release.md)
-- [Release Notes](docs/release-notes.md)
 - [ADR 0001: CLI Tech Stack](docs/adr/0001-tech-stack.md)
 - [ADR 0002: Scenario Is Not CI](docs/adr/0002-scenario-ci-boundary.md)
-
-Research base:
-
-- [Research Index](research/README.md)
-- [Market Research](research/market.md)
 - [Competitive Research](research/competitors.md)
-- [Agent Standards Research](research/agent-standards.md)
-- [Technical Options Research](research/tech-options.md)
-- [GitHub / Kiro / Sourcegraph Precedents](research/precedents-github-kiro-sourcegraph.md)
-- [agents.ge Teardown](research/agents-ge-teardown.md)
-- [Empirical Agent Compatibility Matrix](research/empirical-agent-compatibility-matrix.md)
-- [Primary Research Plan](research/primary-research-plan.md)
+- [Empirical Compatibility Matrix](research/empirical-agent-compatibility-matrix.md)
 
-Examples:
+## Contributing
 
-- [Minimal Workspace Example](examples/minimal-workspace/README.md)
-- [Minimal Scenario Artifact Snapshot](examples/minimal-workspace/artifacts/README.md)
-- [Failure Workspace Example](examples/failure-workspace/README.md)
-- [Failure Scenario Artifact Snapshot](examples/failure-workspace/artifacts/README.md)
-
-Community and project operations:
-
-- [Contributing](CONTRIBUTING.md)
-- [Security Policy](SECURITY.md)
-- [Support](SUPPORT.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Changelog](CHANGELOG.md)
+Issues, PRs, and pilot reports are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md)
+and [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). For security issues, see
+[`SECURITY.md`](SECURITY.md).
 
 ## License
 
-Polyrepo Workspace Kit is licensed under the [Apache License 2.0](LICENSE).
-
-## Compatibility Notes
-
-Adapter compatibility claims are versioned observations, not timeless guarantees. Current empirical notes are recorded in [Empirical Agent Compatibility Matrix](research/empirical-agent-compatibility-matrix.md).
+Apache 2.0. See [`LICENSE`](LICENSE).
