@@ -339,13 +339,6 @@ func scanGradle(path string) (manifestInfo, error) {
 			out.Deps = append(out.Deps, dependency{Name: value, Kind: kind, Source: source})
 			continue
 		}
-		if strings.Contains(line, "project(") {
-			name := gradleProjectName(line)
-			if name != "" {
-				out.Deps = append(out.Deps, dependency{Name: name, Kind: "build", Source: source})
-			}
-			continue
-		}
 	}
 	return out, nil
 }

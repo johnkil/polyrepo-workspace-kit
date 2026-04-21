@@ -61,7 +61,10 @@ make check
 go run ./cmd/wkit --help
 ```
 
-Run a self-contained first-run demo from any installed `wkit` binary:
+Run a self-contained first-run demo from an installed `wkit` binary in a
+POSIX-sh environment. macOS and Linux are supported today; Windows builds
+intentionally reject this demo in v0.x because the generated demo repositories
+use shell entrypoints.
 
 ```bash
 wkit demo

@@ -135,6 +135,20 @@ func TestSuggestGradleGroovyProjectDependencyKindFollowsConfiguration(t *testing
 	assertSuggestion(t, report, "app-web", "build-tools", "build", "build.gradle", "build-tools")
 }
 
+func TestSuggestGradleIgnoresNonDependencyProjectReferences(t *testing.T) {
+	root, app, schema := seedWorkspace(t)
+	writeFile(t, app, "build.gradle", `def schemaProject = project(':shared-schema')`)
+	writeFile(t, schema, "settings.gradle", `rootProject.name = 'shared-schema'`)
+
+	report, err := relations.Suggest(root, relations.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Suggestions) != 0 {
+		t.Fatalf("expected no suggestions for non-dependency project references, got %#v", report.Suggestions)
+	}
+}
+
 func TestSuggestContextFilterAndMissingBinding(t *testing.T) {
 	root, app, schema := seedWorkspace(t)
 	if err := manifest.WriteYAML(filepath.Join(root, workspace.ContextsFile), model.ContextsDocument{
