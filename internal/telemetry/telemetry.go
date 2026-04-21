@@ -100,18 +100,13 @@ func Disable(root string, now time.Time) (Status, error) {
 }
 
 func ReadStatus(root string) (Status, error) {
-	status := Status{
-		ConfigPath: filepath.Join(root, ConfigFile),
-		EventsPath: filepath.Join(root, EventsFile),
-	}
-	doc, err := loadConfig(root)
+	status, found, err := readConfigStatus(root)
 	if err != nil {
-		if !manifest.IsMissing(err) {
-			return status, err
-		}
+		return status, err
+	}
+	if !found {
 		return status, nil
 	}
-	status.Enabled = doc.Telemetry.Enabled
 	count, err := countEvents(status.EventsPath)
 	if err != nil {
 		return status, err
@@ -132,7 +127,7 @@ func Export(root string) ([]byte, error) {
 }
 
 func RecordIfEnabled(root string, event Event) error {
-	status, err := ReadStatus(root)
+	status, _, err := readConfigStatus(root)
 	if err != nil {
 		return err
 	}
@@ -164,6 +159,22 @@ func RecordIfEnabled(root string, event Event) error {
 		return err
 	}
 	return nil
+}
+
+func readConfigStatus(root string) (Status, bool, error) {
+	status := Status{
+		ConfigPath: filepath.Join(root, ConfigFile),
+		EventsPath: filepath.Join(root, EventsFile),
+	}
+	doc, err := loadConfig(root)
+	if err != nil {
+		if !manifest.IsMissing(err) {
+			return status, false, err
+		}
+		return status, false, nil
+	}
+	status.Enabled = doc.Telemetry.Enabled
+	return status, true, nil
 }
 
 func loadConfig(root string) (ConfigDocument, error) {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/johnkil/polyrepo-workspace-kit/internal/scaffold"
-	"github.com/johnkil/polyrepo-workspace-kit/internal/validate"
 	"github.com/johnkil/polyrepo-workspace-kit/internal/workspace"
 )
 
@@ -78,6 +77,39 @@ func TestApplyRejectsUnknownRelationEndpoint(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "unknown relation repo") {
 		t.Fatalf("expected unknown relation repo error, got %v", err)
 	}
+	if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
+		t.Fatalf("failed scaffold should not write a new workspace, stat err=%v", statErr)
+	}
+}
+
+func TestApplyRejectsUnknownRelationEndpointBeforeAddingRepos(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "workspace")
+	if err := workspace.Init(root); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := scaffold.Apply(scaffold.Options{
+		Root: root,
+		Repos: []scaffold.RepoSpec{
+			{ID: "app-web", Path: t.TempDir(), Kind: "app"},
+		},
+		Relations: []scaffold.RelationSpec{
+			{From: "app-web", To: "shared-schema", Kind: "contract"},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "unknown relation repo") {
+		t.Fatalf("expected unknown relation repo error, got %v", err)
+	}
+	doc, loadErr := workspace.LoadWorkspace(root)
+	if loadErr != nil {
+		t.Fatal(loadErr)
+	}
+	if len(doc.Repos) != 0 {
+		t.Fatalf("failed scaffold should not add repos: %#v", doc.Repos)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "repos", "app-web", "repo.yaml")); !os.IsNotExist(statErr) {
+		t.Fatalf("failed scaffold should not write repo manifest, stat err=%v", statErr)
+	}
 }
 
 func TestApplyRejectsUnsupportedRelationKind(t *testing.T) {
@@ -95,16 +127,8 @@ func TestApplyRejectsUnsupportedRelationKind(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `unsupported kind "bogus"`) {
 		t.Fatalf("expected unsupported relation kind error, got %v", err)
 	}
-
-	doc, loadErr := workspace.LoadWorkspace(root)
-	if loadErr != nil {
-		t.Fatal(loadErr)
-	}
-	if len(doc.Relations) != 0 {
-		t.Fatalf("unsupported relation kind should not be written: %#v", doc.Relations)
-	}
-	if report := validate.Workspace(root); !report.OK() {
-		t.Fatalf("failed scaffold should not leave invalid canonical state: %#v", report.Errors)
+	if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
+		t.Fatalf("failed scaffold should not write a new workspace, stat err=%v", statErr)
 	}
 }
 
@@ -127,6 +151,9 @@ func TestApplyDoesNotOverwriteDifferentContext(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "already exists with different repos") {
 		t.Fatalf("expected context overwrite error, got %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "repos", "shared-schema", "repo.yaml")); !os.IsNotExist(statErr) {
+		t.Fatalf("context preflight failure should not write repo manifest, stat err=%v", statErr)
 	}
 }
 
