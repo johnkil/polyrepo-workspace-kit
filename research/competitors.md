@@ -1,6 +1,7 @@
 # Competitive Research
 
 Date: 2026-04-19
+Last updated: 2026-04-22
 Scope: direct competitors, adjacent categories, and differentiation.
 
 ## Question
@@ -20,6 +21,7 @@ The most important direct-adjacent competitor is [agents.ge](https://agents.ge/)
 | Agent guidance sync | agents.ge | Durable `.agents` directory, rules, project memory, MCP config, sync to multiple agents | High | Mostly repo-agent readiness, not explicit polyrepo `change` / `scenario` validation |
 | Agent instruction standards | AGENTS.md, Agent Skills, Claude Skills, Copilot instructions | Common files agents can read | High for adapters | Standards do not model workspace topology by themselves |
 | Cross-repo change platforms | Sourcegraph Batch Changes | Large-scale code changes and PR tracking | Medium-high | Enterprise/platform oriented, not a small local workspace source of truth |
+| Single-repo stacked PR workflows | GitHub Stacked PRs | Reviewable branch/PR chains inside one repository | Medium | Strong for PR layering, but not a polyrepo workspace, relation, or scenario evidence model |
 | Multi-repo manifests | Android `repo`, Zephyr `west`, `vcstool` | Checkout/update many repos from manifest files | Medium | Usually checkout/version focused, not agent context or change narratives |
 | Multi-repo command utilities | `gita`, `myrepos`-style tools | Run git/status commands across many repos | Medium | Useful utilities, but shallow semantics |
 | Bulk polyrepo git managers | `polyrepopro/polyrepo` | Sync, pull, push, commit, status, switch, and run commands across configured repos | Medium | Operates repositories, but does not model cross-repo change intent, validation evidence, or agent guidance |
@@ -77,6 +79,45 @@ Differentiation:
 - They do not aim to be a durable workspace model.
 - They do not explain relationships, contexts, or scenario validation.
 - They are execution tools more than coordination tools.
+
+## Single-Repo Stacked PR Workflows
+
+### GitHub Stacked PRs
+
+[GitHub Stacked PRs](https://github.github.com/gh-stack/) is a native GitHub
+workflow, currently in private preview, for arranging pull requests in an
+ordered stack inside one repository. Each PR targets the branch below it, the UI
+shows stack navigation, and the `gh stack` CLI helps create branches, push,
+submit PRs, rebase, sync, and navigate the stack.
+
+Threat:
+
+- GitHub is validating the same review pain: large changes are easier to review
+  when split into focused layers.
+- The agent integration story is close to the skill/advice surface: GitHub
+  documents a `github/gh-stack` skill for AI coding agents.
+- If `wkit` drifts into branch chains, PR creation, rebasing, or merge
+  orchestration, it will compete with a host-native workflow.
+
+Differentiation:
+
+- `gh-stack` is about vertical review layering inside one repository; `wkit` is
+  about horizontal coordination across several local repositories.
+- `gh-stack` owns branch bases, PR linking, stack rebases, and merge behavior;
+  `wkit` should own repo relationships, contexts, cross-repo changes, scenario
+  locks, and local validation evidence.
+- A healthy combined workflow is: use stacked PRs inside a repository when a
+  repo-local change needs review layers, and use `wkit` to declare which
+  repositories belong to the coordinated change and what evidence proves the
+  whole cross-repo change.
+
+Boundary:
+
+- Do not add `wkit` commands for stack creation, PR submission, cascading
+  rebases, merge queues, or GitHub PR lifecycle tracking during v0.x.
+- If GitHub state is useful later, keep it in derived handoff/report context,
+  not canonical workspace state, and require pilot evidence before revisiting
+  the boundary.
 
 ## Bulk Polyrepo Git Managers
 
@@ -198,6 +239,7 @@ Differentiation:
 Do not compete head-on with:
 
 - Sourcegraph on enterprise PR orchestration;
+- GitHub Stacked PRs on single-repo stacked PR orchestration;
 - Nx/Bazel/Pants on build graph execution;
 - Backstage on organizational catalogs;
 - agents.ge on generic repository-agent readiness alone.

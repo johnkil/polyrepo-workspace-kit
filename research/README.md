@@ -20,6 +20,7 @@ Narrow addenda:
 
 - [precedents-github-kiro-sourcegraph.md](precedents-github-kiro-sourcegraph.md) - GitHub Well-Architected, Kiro multi-root workspaces, and Sourcegraph context as positioning precedents.
 - [agents-ge-teardown.md](agents-ge-teardown.md) - nearest direct-adjacent teardown for agents.ge.
+- [gh-stack-teardown.md](gh-stack-teardown.md) - adjacent teardown for GitHub Stacked PRs and the single-repo review-layering boundary.
 - [polyrepo-feature-inspiration.md](polyrepo-feature-inspiration.md) - feature-level research from bulk polyrepo Git managers and adjacent tools.
 - [empirical-agent-compatibility-matrix.md](empirical-agent-compatibility-matrix.md) - local probe results and remaining compatibility tests for Codex, Claude, Copilot, and OpenCode.
 - [primary-research-plan.md](primary-research-plan.md) - user interview, pilot workspace, measured workflow, and cold-start validation plan.
@@ -54,6 +55,7 @@ research/
   cli-stack.md
   precedents-github-kiro-sourcegraph.md
   agents-ge-teardown.md
+  gh-stack-teardown.md
   polyrepo-feature-inspiration.md
   empirical-agent-compatibility-matrix.md
   primary-research-plan.md
